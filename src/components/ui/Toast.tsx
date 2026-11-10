@@ -24,8 +24,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <T.Root
             key={t.id}
             onOpenChange={(o) => !o && setItems((xs) => xs.filter((x) => x.id !== t.id))}
-            className="k-panel grid gap-1 border-l-2 p-4 data-[state=closed]:opacity-0"
-            style={{ borderLeftColor: t.tone === "neutral" ? undefined : `rgb(var(--${t.tone}))` }}
+            className="k-panel grid gap-1 p-4 data-[state=closed]:opacity-0"
           >
             <T.Title className={cn("font-mono text-13", { neutral: "text-text", pass: "text-pass", block: "text-block", queue: "text-queue" }[t.tone])}>{t.title}</T.Title>
             {t.body ? <T.Description className="text-13 text-text-2">{t.body}</T.Description> : null}

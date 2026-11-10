@@ -34,7 +34,7 @@ export default function AuthCallback() {
       <AppBar />
       <main id="main" className="mx-auto max-w-[560px] px-5 py-16">
         {error ? (
-          <div role="alert" className="k-panel border-l-2 border-l-block p-5">
+          <div role="alert" className="k-panel p-5">
             <p className="text-17">GitHub sign-in didn’t complete.</p>
             <p className="mt-2 font-mono text-13 text-block">{error}</p>
             <ButtonLink href="/connect" variant="secondary" className="mt-4">

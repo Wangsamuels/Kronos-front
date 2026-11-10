@@ -88,8 +88,9 @@ export function AnalysisScreen({ id }: { id: string }) {
           </div>
 
           {stream.status === "unreachable" ? (
-            <div role="alert" className="k-panel border-l-2 border-l-block p-5">
-              <p className="text-15 text-text">Lost the live log connection.</p>
+            <div role="alert" className="k-panel p-5">
+              <p className="font-mono text-13 text-block/90">connection lost</p>
+              <p className="mt-2 text-15 text-text">Lost the live log connection.</p>
               <p className="mt-1 font-mono text-13 text-text-2">The run keeps going on the server. Reconnecting resumes after event #{stream.lastEventId}.</p>
               <Button className="mt-3" variant="secondary" size="sm" onClick={() => runId && openStream(runId)}>
                 Retry
@@ -98,7 +99,7 @@ export function AnalysisScreen({ id }: { id: string }) {
           ) : null}
 
           {phase === "review" ? (
-            <div className="k-panel border-l-2 border-l-pass p-5">
+            <div className="k-panel p-5">
               <p className="font-mono text-13 text-pass">done · ready for review</p>
               {results.data ? (
                 <p className="mt-2 text-17 text-text">
@@ -115,14 +116,14 @@ export function AnalysisScreen({ id }: { id: string }) {
           ) : null}
 
           {phase === "packaging" ? (
-            <div className="k-panel border-l-2 border-l-queue p-5">
+            <div className="k-panel p-5">
               <p className="font-mono text-13 text-queue">approved · packaging</p>
               <p className="mt-2 text-15 text-text-2">Review is locked. The package builder is assembling the guard, tests and deploy script. This log continues from the original run.</p>
             </div>
           ) : null}
 
           {phase === "packaged" ? (
-            <div className="k-panel border-l-2 border-l-pass p-5">
+            <div className="k-panel p-5">
               <p className="font-mono text-13 text-pass">done · package built</p>
               <p className="mt-2 text-15 text-text">{pkgDone?.message ?? "The guard package is ready."}</p>
               <ButtonLink href={`/p/${id}/integrate`} className="mt-4">
@@ -132,7 +133,7 @@ export function AnalysisScreen({ id }: { id: string }) {
           ) : null}
 
           {phase === "failed" ? (
-            <div role="alert" className="k-panel border-l-2 border-l-block p-5">
+            <div role="alert" className="k-panel p-5">
               <p className="font-mono text-13 text-block">failed at {stageLabel(failedStage ?? run.data?.stage ?? "unknown")}</p>
               <p className="mt-2 text-15 text-text">{errorEv?.message ?? errorMessage((run.data?.error as { message?: string } | undefined)?.message ?? "Analysis failed")}</p>
               <Button className="mt-4" variant="secondary" onClick={retry} busy={reanalyze.isPending}>

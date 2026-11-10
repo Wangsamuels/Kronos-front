@@ -78,7 +78,8 @@ export function IntegrateScreen({ id }: { id: string }) {
         package v{pkg.data.version} · config hash {pkg.data.configHash.slice(0, 18)}…
       </p>
       {m.warnings?.length ? (
-        <p role="alert" className="mt-4 border-l-2 border-queue pl-3 text-15 text-queue">
+        <p role="alert" className="mt-4 rounded-ctl border border-line bg-surface px-4 py-3 text-15 text-text-2">
+          <span className="mr-2 font-mono text-13 text-queue/90">warning</span>
           {m.warnings.join(" · ")}
         </p>
       ) : null}

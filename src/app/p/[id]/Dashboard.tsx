@@ -132,8 +132,8 @@ export function Dashboard({ id }: { id: string }) {
         </div>
       </div>
       {p.status !== "live" && p.status !== "paused" ? (
-        <p className="mt-4 border-l-2 border-queue pl-3 text-15 text-text-2">
-          This guard is not live yet. <a className="text-text underline" href={`/p/${id}/verify`}>Finish onboarding →</a>
+        <p className="mt-4 rounded-ctl border border-line bg-surface px-4 py-3 text-15 text-text-2">
+          <span className="mr-2 font-mono text-13 text-queue/90">not live</span>This guard is not live yet. <a className="text-text underline" href={`/p/${id}/verify`}>Finish onboarding →</a>
         </p>
       ) : null}
 

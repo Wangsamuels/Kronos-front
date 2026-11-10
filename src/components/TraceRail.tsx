@@ -121,16 +121,29 @@ export function TraceRail({ traces = SCRIPTED_TRACES, stages = GUARD_STAGES as r
           );
         })}
       </ol>
-      <div className={cn("mt-5 min-h-[64px] rounded-ctl border border-line bg-surface-2 px-4 py-3 font-mono text-13", stopped && (trace.verdict === "blocked" ? "border-l-2 border-l-block" : "border-l-2 border-l-queue"))} aria-live="polite">
+      {/* Verdict: neutral surface, no colored stripe. Only the small status word carries color. */}
+      <div className="mt-5 min-h-[88px] rounded-ctl border border-line bg-surface-2 px-4 py-3 font-mono text-13" aria-live="polite">
+        <div className="flex items-center justify-between gap-3 text-11 uppercase tracking-[0.08em]">
+          <span className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className={cn("block size-1.5 rounded-full", trace.verdict === "blocked" ? "bg-block/80" : trace.verdict === "queued" ? "bg-queue/80" : "bg-pass/80")}
+            />
+            <span className={trace.verdict === "blocked" ? "text-block/90" : trace.verdict === "queued" ? "text-queue/90" : "text-pass/90"}>
+              {trace.verdict === "blocked" ? "reverted" : trace.verdict === "queued" ? "queued" : "passed"}
+            </span>
+          </span>
+          <span className="truncate text-text-3">{stopped && trace.stopAt !== undefined ? `at ${stages[trace.stopAt]}` : `${stages.length}/${stages.length} stages`}</span>
+        </div>
         {stopped ? (
           <>
-            <p className={trace.verdict === "blocked" ? "text-block" : "text-queue"}>{typed || "\u00a0"}</p>
-            <p className="mt-1 text-text-2">{trace.detail}</p>
+            <p className="mt-2 break-words text-text">{typed || "\u00a0"}</p>
+            <p className="mt-1 text-text-3">{trace.detail}</p>
           </>
         ) : (
           <>
-            <p className="text-pass">all checks passed</p>
-            <p className="mt-1 text-text-2">
+            <p className="mt-2 text-text">all checks passed</p>
+            <p className="mt-1 text-text-3">
               {trace.action} {trace.amount} · intent signed · attestation fresh
             </p>
           </>

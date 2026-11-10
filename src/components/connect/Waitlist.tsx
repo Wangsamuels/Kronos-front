@@ -11,7 +11,8 @@ export function Waitlist({ protocolType, className }: { protocolType: string; cl
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return (
     <div className={className}>
-      <div className="k-panel border-l-2 border-l-queue p-5">
+      <div className="k-panel p-5">
+        <p className="mb-2 font-mono text-13 text-queue/90">not supported yet · waitlist</p>
         <p className="text-17 text-text">Kronos supports lending protocols today. Bridges are next.</p>
         <p className="mt-2 text-15 text-text-2">
           We’ll email you when <span className="font-mono text-text">{protocolType}</span> protocols can be analyzed. Your repo link is kept with the request.

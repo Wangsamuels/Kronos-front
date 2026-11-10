@@ -103,7 +103,7 @@ export function Markdown({ source }: { source: string }) {
     }
     if (/^> /.test(l)) {
       out.push(
-        <p key={k} className="border-l-2 border-queue pl-3 text-15 text-queue">
+        <p key={k} className="rounded-ctl border border-line bg-surface-2 px-3 py-2 text-15 text-text-2">
           {inline(l.slice(2), k)}
         </p>,
       );

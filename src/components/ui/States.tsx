@@ -33,7 +33,7 @@ export function EmptyState({ children, action, className }: { children: React.Re
 
 export function ErrorState({ what, error, onRetry, className }: { what: string; error: unknown; onRetry?: () => void; className?: string }) {
   return (
-    <div role="alert" className={cn("flex flex-col items-start gap-3 border-l-2 border-block p-5", className)}>
+    <div role="alert" className={cn("flex flex-col items-start gap-3 p-5", className)}>
       <p className="text-15 text-text">
         <span className="font-mono text-13 text-block">error</span> · Couldn’t load {what}.
       </p>

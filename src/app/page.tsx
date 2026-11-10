@@ -5,6 +5,7 @@ import { SectionLabel } from "@/components/ui/Section";
 import { LazyTrace } from "@/components/home/LazyTrace";
 import { ReplayStrip } from "@/components/home/ReplayStrip";
 import { HowItWorks } from "@/components/home/HowItWorks";
+import { HeroRain } from "@/components/home/HeroRain";
 import { GuardFlow } from "@/components/home/GuardFlow";
 import { AdminTimeline } from "@/components/home/AdminTimeline";
 import { CodeTabs, type CodeTab } from "@/components/code/CodeTabs";
@@ -53,8 +54,9 @@ export default async function Home() {
       <main id="main">
         {/* 1 — Hero */}
         <section className="k-container">
-          <div className="k-gridlines relative border-x border-b border-line">
-            <div className="grid gap-12 bg-bg/0 px-5 pb-16 pt-16 md:px-8 lg:grid-cols-12 lg:pb-20 lg:pt-24">
+          <div className="relative isolate overflow-hidden border-x border-b border-line">
+            <HeroRain />
+            <div className="relative grid gap-12 px-5 pb-16 pt-16 md:px-8 lg:grid-cols-12 lg:pb-20 lg:pt-24">
               <div className="lg:col-span-6">
                 <p className="k-label mb-6">Security layer for DeFi protocols</p>
                 <h1 className="text-44 font-medium md:text-64">

@@ -98,6 +98,54 @@
     background-size: calc(100% / 12) 100%;
     background-position: left top;
   }
+  /* Hero rain: faint static lanes + falling streaks (see components/home/HeroRain.tsx) */
+  .k-rain {
+    contain: strict;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 78%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 78%, transparent 100%);
+  }
+  .k-rain-lane {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgb(var(--line) / 0.55);
+  }
+  /* The drop is a lane-tall box translated from -100% to +100% of its own height (= the hero's
+     height), so speed scales with the hero; the visible streak is its ::after, pinned to the bottom. */
+  .k-rain-drop {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    transform: translate3d(0, -100%, 0);
+    animation: k-rain-fall var(--dur) linear var(--delay) infinite;
+    will-change: transform;
+  }
+  .k-rain-drop::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    height: var(--len);
+    background: linear-gradient(to bottom, rgb(var(--tone) / 0) 0%, rgb(var(--tone) / 0.12) 55%, rgb(var(--tone) / 0.5) 96%, rgb(var(--tone) / 0.85) 100%);
+    border-radius: 0 0 1px 1px;
+  }
+  @keyframes k-rain-fall {
+    0% { transform: translate3d(0, -100%, 0); opacity: 0; }
+    8% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { transform: translate3d(0, calc(100% + var(--len)), 0); opacity: 0; }
+  }
+  [data-theme="light"] .k-rain-drop::after {
+    opacity: 0.7;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .k-rain-drop {
+      display: none !important;
+    }
+  }
   .k-shiki pre {
     @apply overflow-x-auto bg-transparent p-4 font-mono text-13 leading-relaxed;
   }
