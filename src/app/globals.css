@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens. Stored as RGB triplets so Tailwind can apply alpha (bg-line/50 etc). */
+:root,
+[data-theme="dark"] {
+  --bg: 11 12 14; /* #0B0C0E */
+  --surface: 18 20 24; /* #121418 */
+  --surface-2: 24 27 32; /* #181B20 */
+  --line: 35 38 45; /* #23262D */
+  --text: 236 234 228; /* #ECEAE4 */
+  --text-2: 154 157 166; /* #9A9DA6 */
+  --text-3: 120 123 133; /* #62656E is the spec value; nudged to #787B85 for AA on small labels */
+  --pass: 61 214 140; /* #3DD68C */
+  --block: 255 92 92; /* #FF5C5C */
+  --queue: 245 184 65; /* #F5B841 */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: 246 245 241; /* #F6F5F1 */
+  --surface: 255 255 255;
+  --surface-2: 239 238 233; /* #EFEEE9 */
+  --line: 222 220 213; /* #DEDCD5 */
+  --text: 17 18 20; /* #111214 */
+  --text-2: 85 88 95; /* #55585F */
+  --text-3: 110 112 118; /* #8A8C92 in spec; darkened for AA */
+  --pass: 17 128 77; /* #11804D */
+  --block: 200 49 47; /* #C8312F */
+  --queue: 154 106 0; /* #9A6A00 */
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    background: rgb(var(--bg));
+    color: rgb(var(--text));
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg font-sans text-15 text-text;
+    min-height: 100dvh;
+  }
+  ::selection {
+    background: rgb(var(--text));
+    color: rgb(var(--bg));
+  }
+  :focus-visible {
+    outline: 2px solid rgb(var(--text));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .font-mono,
+  code,
+  pre,
+  kbd {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "zero" 1;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  .k-container {
+    @apply mx-auto w-full max-w-grid px-5 md:px-8;
+  }
+  .k-label {
+    @apply font-mono text-11 uppercase text-text-3;
+    letter-spacing: 0.06em;
+  }
+  .k-panel {
+    @apply rounded-panel border border-line bg-surface;
+  }
+  .k-input {
+    @apply h-11 w-full rounded-ctl border border-line bg-surface-2 px-3 font-mono text-13 text-text placeholder:text-text-3;
+    transition: border-color 160ms var(--ease);
+  }
+  .k-input:hover {
+    border-color: rgb(var(--text-3));
+  }
+  .k-input[aria-invalid="true"] {
+    border-color: rgb(var(--block));
+  }
+  .k-tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  /* 12-column drawing-sheet grid lines, visible in the hero and section dividers */
+  .k-gridlines {
+    background-image: linear-gradient(to right, rgb(var(--line)) 1px, transparent 1px);
+    background-size: calc(100% / 12) 100%;
+    background-position: left top;
+  }
+  .k-shiki pre {
+    @apply overflow-x-auto bg-transparent p-4 font-mono text-13 leading-relaxed;
+  }
+  .k-shiki code {
+    counter-reset: line;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

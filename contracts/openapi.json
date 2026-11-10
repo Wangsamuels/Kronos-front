@@ -1,0 +1,3027 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Kronos API",
+    "version": "1.0.0",
+    "description": "Kronos backend: protocol onboarding, AI-assisted guard analysis, review, packaging, deployment verification and monitoring. All errors use {error:{code,message,details?}}."
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "DB, Redis and queue status",
+        "tags": [
+          "meta"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/auth/github": {
+      "get": {
+        "summary": "Start GitHub OAuth",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/auth/github/install": {
+      "get": {
+        "summary": "Install the Kronos GitHub App",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/auth/github/callback": {
+      "get": {
+        "summary": "GitHub OAuth / App install callback; redirects to FRONTEND_URL/auth/callback#access_token=…",
+        "tags": [
+          "auth"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "code",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "state",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "installation_id",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "setup_action",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/auth/nonce": {
+      "get": {
+        "summary": "Nonce for SIWE / NEAR sign-in",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "nonce": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "nonce"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/wallet": {
+      "post": {
+        "summary": "SIWE or NEAR signature. Links the wallet to the signed-in user, or signs in by wallet.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "siwe"
+                        ]
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "signature": {
+                        "type": "string",
+                        "pattern": "^0x[0-9a-fA-F]+$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "message",
+                      "signature"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "near"
+                        ]
+                      },
+                      "accountId": {
+                        "type": "string"
+                      },
+                      "publicKey": {
+                        "type": "string"
+                      },
+                      "signature": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string"
+                      },
+                      "recipient": {
+                        "type": "string"
+                      },
+                      "callbackUrl": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "accountId",
+                      "publicKey",
+                      "signature",
+                      "message",
+                      "nonce",
+                      "recipient"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "expiresIn": {
+                      "type": "number"
+                    },
+                    "userId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "expiresIn",
+                    "userId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "summary": "Rotate the httpOnly refresh cookie, get a new access token",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "expiresIn": {
+                      "type": "number"
+                    },
+                    "userId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "expiresIn",
+                    "userId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "enum": [
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/dev": {
+      "post": {
+        "summary": "Dev login (only when ALLOW_DEV_LOGIN=true)",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "login": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 39,
+                    "default": "demo"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "expiresIn": {
+                      "type": "number"
+                    },
+                    "userId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "accessToken",
+                    "expiresIn",
+                    "userId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "githubLogin": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "walletAddress": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "nearAccount": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "githubAppInstalled": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "githubLogin",
+                    "walletAddress",
+                    "nearAccount",
+                    "githubAppInstalled",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meta": {
+      "get": {
+        "summary": "Supported chains and which integrations are live vs local fallback",
+        "tags": [
+          "meta"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "string"
+                    },
+                    "chains": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "chainId": {
+                            "type": "number"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "chainId",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "integrations": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "boolean"
+                          }
+                        ]
+                      }
+                    },
+                    "devLogin": {
+                      "type": "boolean"
+                    },
+                    "protocolTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "available": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "available"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "chains",
+                    "integrations",
+                    "devLogin",
+                    "protocolTypes"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/waitlist": {
+      "post": {
+        "summary": "Join the waitlist for bridges and other protocol types",
+        "tags": [
+          "meta"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "protocolType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "email",
+                  "protocolType"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols": {
+      "post": {
+        "summary": "Create a draft protocol and start ingest",
+        "tags": [
+          "protocols"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "websiteUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "repoUrl": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "https://github.com/org/repo[/tree/<ref>/<subdir>] or sample://minilend"
+                  },
+                  "chainId": {
+                    "type": "integer"
+                  },
+                  "addresses": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^0x[0-9a-fA-F]{40}$"
+                    },
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "chainId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "protocol": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "websiteUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "repoUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chainId": {
+                          "type": "number"
+                        },
+                        "addresses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "analyzing",
+                            "review",
+                            "approved",
+                            "integrating",
+                            "live",
+                            "paused",
+                            "unsupported"
+                          ]
+                        },
+                        "latestRunId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "websiteUrl",
+                        "repoUrl",
+                        "chainId",
+                        "addresses",
+                        "type",
+                        "status",
+                        "latestRunId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "analysisId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "analysisId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "protocols"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "websiteUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "repoUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "chainId": {
+                            "type": "number"
+                          },
+                          "addresses": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "analyzing",
+                              "review",
+                              "approved",
+                              "integrating",
+                              "live",
+                              "paused",
+                              "unsupported"
+                            ]
+                          },
+                          "latestRunId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "websiteUrl",
+                          "repoUrl",
+                          "chainId",
+                          "addresses",
+                          "type",
+                          "status",
+                          "latestRunId",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}": {
+      "get": {
+        "tags": [
+          "protocols"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "websiteUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "repoUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "chainId": {
+                      "type": "number"
+                    },
+                    "addresses": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "analyzing",
+                        "review",
+                        "approved",
+                        "integrating",
+                        "live",
+                        "paused",
+                        "unsupported"
+                      ]
+                    },
+                    "latestRunId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "websiteUrl",
+                    "repoUrl",
+                    "chainId",
+                    "addresses",
+                    "type",
+                    "status",
+                    "latestRunId",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}/analyses": {
+      "post": {
+        "summary": "Start a new analysis run (also used to re-analyse after code changes)",
+        "tags": [
+          "analyses"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "protocolId": {
+                      "type": "string"
+                    },
+                    "commitSha": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "running",
+                        "review",
+                        "approved",
+                        "packaging",
+                        "packaged",
+                        "failed"
+                      ]
+                    },
+                    "stage": {
+                      "type": "string"
+                    },
+                    "error": {},
+                    "tokenCost": {
+                      "type": "number"
+                    },
+                    "llm": {},
+                    "startedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "finishedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "protocolId",
+                    "commitSha",
+                    "status",
+                    "stage",
+                    "tokenCost",
+                    "startedAt",
+                    "finishedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analyses/{id}": {
+      "get": {
+        "tags": [
+          "analyses"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "protocolId": {
+                      "type": "string"
+                    },
+                    "commitSha": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "running",
+                        "review",
+                        "approved",
+                        "packaging",
+                        "packaged",
+                        "failed"
+                      ]
+                    },
+                    "stage": {
+                      "type": "string"
+                    },
+                    "error": {},
+                    "tokenCost": {
+                      "type": "number"
+                    },
+                    "llm": {},
+                    "startedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "finishedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "protocolId",
+                    "commitSha",
+                    "status",
+                    "stage",
+                    "tokenCost",
+                    "startedAt",
+                    "finishedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analyses/{id}/stream": {
+      "get": {
+        "summary": "SSE live log: events stage, log, entrypoint, invariant, done, error. Auth via ?token= (EventSource can't send headers)",
+        "tags": [
+          "analyses"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "token",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "in": "query",
+            "name": "lastEventId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/analyses/{id}/results": {
+      "get": {
+        "tags": [
+          "analyses"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "protocolId": {
+                          "type": "string"
+                        },
+                        "commitSha": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "queued",
+                            "running",
+                            "review",
+                            "approved",
+                            "packaging",
+                            "packaged",
+                            "failed"
+                          ]
+                        },
+                        "stage": {
+                          "type": "string"
+                        },
+                        "error": {},
+                        "tokenCost": {
+                          "type": "number"
+                        },
+                        "llm": {},
+                        "startedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "protocolId",
+                        "commitSha",
+                        "status",
+                        "stage",
+                        "tokenCost",
+                        "startedAt",
+                        "finishedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "entrypoints": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "contract": {
+                            "type": "string"
+                          },
+                          "signature": {
+                            "type": "string"
+                          },
+                          "selector": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "privileged"
+                            ]
+                          },
+                          "notes": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "contract",
+                          "signature",
+                          "selector",
+                          "kind",
+                          "role",
+                          "notes"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "intentSchemas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "entrypointId": {
+                            "type": "string"
+                          },
+                          "eip712": {},
+                          "bounds": {},
+                          "plainText": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "proposed",
+                              "approved",
+                              "rejected"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "entrypointId",
+                          "plainText",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "invariants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "template": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "plainText": {
+                            "type": "string"
+                          },
+                          "solidity": {
+                            "type": "string"
+                          },
+                          "params": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "drafters": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "evidence": {},
+                          "needsReview": {
+                            "type": "boolean"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "proposed",
+                              "approved",
+                              "rejected"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "template",
+                          "title",
+                          "plainText",
+                          "solidity",
+                          "params",
+                          "drafters",
+                          "needsReview",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "tiers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "entrypointId": {
+                            "type": "string"
+                          },
+                          "tier": {
+                            "type": "number"
+                          },
+                          "delaySeconds": {
+                            "type": "number"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "agent",
+                              "rule"
+                            ]
+                          },
+                          "rationale": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "proposed",
+                              "approved",
+                              "rejected"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "entrypointId",
+                          "tier",
+                          "delaySeconds",
+                          "source",
+                          "rationale",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "thresholds": {},
+                    "testReport": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "normalTxCount": {
+                          "type": "number"
+                        },
+                        "normalPass": {
+                          "type": "number"
+                        },
+                        "attacksTotal": {
+                          "type": "number"
+                        },
+                        "attacksBlocked": {
+                          "type": "number"
+                        },
+                        "gas": {},
+                        "details": {}
+                      },
+                      "required": [
+                        "id",
+                        "normalTxCount",
+                        "normalPass",
+                        "attacksTotal",
+                        "attacksBlocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "run",
+                    "entrypoints",
+                    "intentSchemas",
+                    "invariants",
+                    "tiers",
+                    "testReport"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invariants/{id}": {
+      "patch": {
+        "summary": "Approve, reject or edit params",
+        "tags": [
+          "review"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "proposed",
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "params": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "template": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "plainText": {
+                      "type": "string"
+                    },
+                    "solidity": {
+                      "type": "string"
+                    },
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "drafters": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "evidence": {},
+                    "needsReview": {
+                      "type": "boolean"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "proposed",
+                        "approved",
+                        "rejected"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "template",
+                    "title",
+                    "plainText",
+                    "solidity",
+                    "params",
+                    "drafters",
+                    "needsReview",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/intent-schemas/{id}": {
+      "patch": {
+        "tags": [
+          "review"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "proposed",
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "bounds": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "entrypointId": {
+                      "type": "string"
+                    },
+                    "eip712": {},
+                    "bounds": {},
+                    "plainText": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "proposed",
+                        "approved",
+                        "rejected"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "entrypointId",
+                    "plainText",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tiers/{id}": {
+      "patch": {
+        "summary": "Approve/reject or change a tier. Hard rules can only be made stricter.",
+        "tags": [
+          "review"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "proposed",
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "tier": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "entrypointId": {
+                      "type": "string"
+                    },
+                    "tier": {
+                      "type": "number"
+                    },
+                    "delaySeconds": {
+                      "type": "number"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "agent",
+                        "rule"
+                      ]
+                    },
+                    "rationale": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "proposed",
+                        "approved",
+                        "rejected"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "entrypointId",
+                    "tier",
+                    "delaySeconds",
+                    "source",
+                    "rationale",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analyses/{id}/approve": {
+      "post": {
+        "summary": "Lock the review and build the package. Items flagged needsReview must be decided first.",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "protocolId": {
+                      "type": "string"
+                    },
+                    "commitSha": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "running",
+                        "review",
+                        "approved",
+                        "packaging",
+                        "packaged",
+                        "failed"
+                      ]
+                    },
+                    "stage": {
+                      "type": "string"
+                    },
+                    "error": {},
+                    "tokenCost": {
+                      "type": "number"
+                    },
+                    "llm": {},
+                    "startedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "finishedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "protocolId",
+                    "commitSha",
+                    "status",
+                    "stage",
+                    "tokenCost",
+                    "startedAt",
+                    "finishedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packages/{id}": {
+      "get": {
+        "summary": "Manifest, diff preview and a download URL",
+        "tags": [
+          "packages"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "runId": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "configHash": {
+                      "type": "string"
+                    },
+                    "manifest": {},
+                    "downloadUrl": {
+                      "type": "string"
+                    },
+                    "prUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "runId",
+                    "version",
+                    "configHash",
+                    "downloadUrl",
+                    "prUrl",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analyses/{id}/package": {
+      "get": {
+        "summary": "The package built from this run, if any",
+        "tags": [
+          "packages"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "runId": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "configHash": {
+                      "type": "string"
+                    },
+                    "manifest": {},
+                    "downloadUrl": {
+                      "type": "string"
+                    },
+                    "prUrl": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "runId",
+                    "version",
+                    "configHash",
+                    "downloadUrl",
+                    "prUrl",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packages/{id}/download": {
+      "get": {
+        "summary": "Zip download (contracts, config, tests, SDK snippet, INTEGRATION.md). Auth via header or ?token=",
+        "tags": [
+          "packages"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "token",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/packages/{id}/pull-request": {
+      "post": {
+        "summary": "Open the integration PR through the Kronos GitHub App and return its URL",
+        "tags": [
+          "packages"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "prUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "prUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}/deployments": {
+      "post": {
+        "summary": "Register a deployed guard and run on-chain verification; on success the protocol goes live",
+        "tags": [
+          "deployments"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "chainId": {
+                    "type": "integer"
+                  },
+                  "guardAddress": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  },
+                  "timelockAddress": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  },
+                  "registryAddress": {
+                    "type": "string",
+                    "pattern": "^0x[0-9a-fA-F]{40}$"
+                  }
+                },
+                "required": [
+                  "chainId",
+                  "guardAddress"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "protocolId": {
+                      "type": "string"
+                    },
+                    "packageId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "chainId": {
+                      "type": "number"
+                    },
+                    "guardAddress": {
+                      "type": "string"
+                    },
+                    "timelockAddress": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "registryAddress": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "checks": {},
+                    "verifiedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "protocolId",
+                    "packageId",
+                    "chainId",
+                    "guardAddress",
+                    "timelockAddress",
+                    "registryAddress",
+                    "verified",
+                    "verifiedAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "deployments"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "protocolId": {
+                        "type": "string"
+                      },
+                      "packageId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "chainId": {
+                        "type": "number"
+                      },
+                      "guardAddress": {
+                        "type": "string"
+                      },
+                      "timelockAddress": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "registryAddress": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "verified": {
+                        "type": "boolean"
+                      },
+                      "checks": {},
+                      "verifiedAt": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "protocolId",
+                      "packageId",
+                      "chainId",
+                      "guardAddress",
+                      "timelockAddress",
+                      "registryAddress",
+                      "verified",
+                      "verifiedAt",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}/overview": {
+      "get": {
+        "summary": "Status, 24h stats, attestation age, queued outflow",
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "protocol": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "websiteUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "repoUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chainId": {
+                          "type": "number"
+                        },
+                        "addresses": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "analyzing",
+                            "review",
+                            "approved",
+                            "integrating",
+                            "live",
+                            "paused",
+                            "unsupported"
+                          ]
+                        },
+                        "latestRunId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "websiteUrl",
+                        "repoUrl",
+                        "chainId",
+                        "addresses",
+                        "type",
+                        "status",
+                        "latestRunId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "deployment": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "protocolId": {
+                          "type": "string"
+                        },
+                        "packageId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "chainId": {
+                          "type": "number"
+                        },
+                        "guardAddress": {
+                          "type": "string"
+                        },
+                        "timelockAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "registryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        },
+                        "checks": {},
+                        "verifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "protocolId",
+                        "packageId",
+                        "chainId",
+                        "guardAddress",
+                        "timelockAddress",
+                        "registryAddress",
+                        "verified",
+                        "verifiedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "stats24h": {
+                      "type": "object",
+                      "properties": {
+                        "blocked": {
+                          "type": "number"
+                        },
+                        "queued": {
+                          "type": "number"
+                        },
+                        "released": {
+                          "type": "number"
+                        },
+                        "adminQueued": {
+                          "type": "number"
+                        },
+                        "alerts": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "blocked",
+                        "queued",
+                        "released",
+                        "adminQueued",
+                        "alerts"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "attestation": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "block": {
+                          "type": "number"
+                        },
+                        "ageSeconds": {
+                          "type": "number"
+                        },
+                        "oracleOk": {
+                          "type": "boolean"
+                        },
+                        "solvencyOk": {
+                          "type": "boolean"
+                        },
+                        "postedTx": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "block",
+                        "ageSeconds",
+                        "oracleOk",
+                        "solvencyOk",
+                        "postedTx"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "queuedOutflow": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "amount": {
+                            "type": "string"
+                          },
+                          "claims": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "amount",
+                          "claims"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "pendingAdminActions": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "protocol",
+                    "deployment",
+                    "stats24h",
+                    "attestation",
+                    "queuedOutflow",
+                    "pendingAdminActions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}/events": {
+      "get": {
+        "summary": "Paginated activity feed",
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "txHash": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "invariantId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "asset": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "amount": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "data": {},
+                          "ts": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "txHash",
+                          "invariantId",
+                          "asset",
+                          "amount",
+                          "ts"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}/admin-queue": {
+      "get": {
+        "summary": "Timelocked changes with ETA and tier",
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "cancelled",
+                "executed",
+                "all"
+              ],
+              "default": "queued"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "chainId": {
+                        "type": "number"
+                      },
+                      "actionId": {
+                        "type": "number"
+                      },
+                      "target": {
+                        "type": "string"
+                      },
+                      "selector": {
+                        "type": "string"
+                      },
+                      "functionName": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "tier": {
+                        "type": "number"
+                      },
+                      "eta": {
+                        "type": "string"
+                      },
+                      "proposer": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "txHash": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "chainId",
+                      "actionId",
+                      "target",
+                      "selector",
+                      "functionName",
+                      "tier",
+                      "eta",
+                      "proposer",
+                      "status",
+                      "txHash"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/protocols/{id}/settings": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thresholds": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "threshold": {
+                            "type": "string"
+                          },
+                          "staleLimit": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "threshold"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "alerts": {
+                      "type": "object",
+                      "properties": {
+                        "webhookUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uri"
+                        },
+                        "telegramChatId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discordWebhookUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uri"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "autoTighten": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Alert channels and desired outflow thresholds. Loosening a threshold on-chain is a Tier 1 timelock action; the monitor alerts against these values and can only tighten on its own.",
+        "tags": [
+          "dashboard"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "thresholds": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "threshold": {
+                          "type": "string"
+                        },
+                        "staleLimit": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "threshold"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "alerts": {
+                    "type": "object",
+                    "properties": {
+                      "webhookUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "uri"
+                      },
+                      "telegramChatId": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "discordWebhookUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "format": "uri"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "autoTighten": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "thresholds": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "threshold": {
+                            "type": "string"
+                          },
+                          "staleLimit": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "threshold"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "alerts": {
+                      "type": "object",
+                      "properties": {
+                        "webhookUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uri"
+                        },
+                        "telegramChatId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "discordWebhookUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "uri"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "autoTighten": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://kronos-api.herokuapp.com"
+    }
+  ],
+  "security": [
+    {
+      "bearer": []
+    }
+  ]
+}
