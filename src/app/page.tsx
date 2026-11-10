@@ -119,7 +119,7 @@ export default async function Home() {
                 <li>Drains through old approvals</li>
                 <li>Split withdrawals under a per-tx cap (queued)</li>
               </ul>
-              <p className="mt-6 text-13 text-text-3">About 98% of named March–November 2026 smart-contract hack dollars (≈$140M across 13 incidents), once the admin strategy is included.</p>
+              <p className="mt-6 text-13 text-text-3">About 98% of named March–November 2026 smart-contract hack dollars (≈$140M across 13 incidents).</p>
             </div>
             <div className="bg-bg p-6">
               <p className="font-mono text-13 text-block">doesn’t stop</p>
