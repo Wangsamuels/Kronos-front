@@ -40,19 +40,22 @@ export function QueueRow({
   }, []);
   const left = eta ? Math.max(0, Math.round((new Date(eta).getTime() - now) / 1000)) : null;
   return (
-    <li className="grid gap-3 border-b border-line px-5 py-3 last:border-b-0 md:grid-cols-12 md:items-center">
-      <span className="md:col-span-3">
+    <li className="grid grid-cols-2 items-center gap-x-4 gap-y-2.5 border-b border-line px-4 py-4 last:border-b-0 md:grid-cols-12 md:gap-3 md:px-5 md:py-3.5">
+      <span className="col-span-2 md:col-span-3">
         <StatusPill tone={badgeTone}>{badge}</StatusPill>
       </span>
-      <span className="truncate font-mono text-13 text-text md:col-span-4" title={action}>
+      <span className="col-span-2 truncate font-mono text-15 text-text md:col-span-3 md:text-13" title={action}>
         {action}
       </span>
-      <span className="font-mono text-13 text-text-2 md:col-span-2">{proposer ? short(proposer) : "—"}</span>
-      <span className="k-tnum font-mono text-13 text-text-2 md:col-span-2" aria-live="off">
+      <span className="font-mono text-13 text-text-2 md:col-span-2">
+        <span className="mr-2 text-11 uppercase tracking-[0.06em] text-text-3 md:hidden">by</span>
+        {proposer ? short(proposer) : "—"}
+      </span>
+      <span className="k-tnum text-right font-mono text-13 text-queue md:col-span-2 md:text-left" aria-live="off">
         {left === null ? "—" : left === 0 ? "eta reached" : `${etaPrefix ?? ""}${duration(left)}`}
       </span>
-      <span className="md:col-span-1 md:text-right">
-        <Button size="sm" variant={danger ? "danger" : "secondary"} onClick={() => setOpen(true)}>
+      <span className="col-span-2 md:col-span-2 md:text-right">
+        <Button size="sm" className="w-full md:w-auto" variant={danger ? "danger" : "secondary"} onClick={() => setOpen(true)}>
           {actionLabel}
         </Button>
       </span>

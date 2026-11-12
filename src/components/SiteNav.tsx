@@ -99,25 +99,32 @@ export function SiteNav() {
 export function AppBar({ crumbs, right }: { crumbs?: { href?: string; label: string }[]; right?: React.ReactNode }) {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/85 backdrop-blur-md">
-      <div className="k-container flex h-14 items-center gap-4">
+      <div className="k-container flex h-16 items-center gap-4">
         <Wordmark />
         {crumbs?.length ? (
-          <nav aria-label="Breadcrumb" className="min-w-0 truncate text-13 text-text-2">
-            {crumbs.map((c, i) => (
-              <span key={i}>
-                {i > 0 ? <span className="px-1.5 text-text-3">/</span> : null}
-                {c.href ? (
-                  <Link href={c.href} className="hover:text-text">
-                    {c.label}
-                  </Link>
-                ) : (
-                  <span className="text-text">{c.label}</span>
-                )}
-              </span>
-            ))}
+          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center border-l border-line pl-4 text-13 text-text-2">
+            <ol className="flex min-w-0 items-center">
+              {crumbs.map((c, i) => {
+                const last = i === crumbs.length - 1;
+                return (
+                  <li key={i} className={cn("flex min-w-0 items-center", !last && "hidden min-[520px]:flex")}>
+                    {i > 0 ? <span aria-hidden className="hidden px-2 font-mono text-text-3 min-[520px]:inline">/</span> : null}
+                    {c.href ? (
+                      <Link href={c.href} className="whitespace-nowrap rounded-ctl transition-colors duration-k hover:text-text">
+                        {c.label}
+                      </Link>
+                    ) : (
+                      <span aria-current={last ? "page" : undefined} className="truncate text-text">
+                        {c.label}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
           </nav>
         ) : null}
-        <div className="ml-auto flex items-center gap-2">{right}</div>
+        <div className="ml-auto flex shrink-0 items-center gap-2">{right}</div>
       </div>
     </header>
   );

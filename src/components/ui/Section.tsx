@@ -11,10 +11,10 @@ export function SectionLabel({ n, children, className, as: As = "p" }: { n?: str
 
 export function Panel({ className, children, label, right, ...rest }: React.HTMLAttributes<HTMLElement> & { label?: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <section className={cn("k-panel overflow-hidden", className)} {...rest}>
+    <section className={cn("overflow-hidden rounded-panel border border-line-2 bg-surface", className)} {...rest}>
       {label || right ? (
-        <header className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-5 py-3">
-          <div className="k-label">{label}</div>
+        <header className="k-bar py-1.5">
+          <div>{label}</div>
           {right}
         </header>
       ) : null}

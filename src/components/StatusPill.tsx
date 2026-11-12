@@ -3,15 +3,25 @@ import { cn } from "@/lib/cn";
 export type PillTone = "pass" | "block" | "queue" | "neutral";
 
 const tones: Record<PillTone, string> = {
-  pass: "border-pass/40 bg-pass/10 text-pass",
-  block: "border-block/40 bg-block/10 text-block",
-  queue: "border-queue/40 bg-queue/10 text-queue",
-  neutral: "border-line bg-surface-2 text-text-2",
+  pass: "border-pass/30 bg-pass/10 text-pass",
+  block: "border-block/30 bg-block/10 text-block",
+  queue: "border-queue/30 bg-queue/10 text-queue",
+  neutral: "border-line-2 bg-surface-2 text-text-2",
 };
 
 /** Colour by meaning only, always paired with a word. */
-export function StatusPill({ tone, children, className }: { tone: PillTone; children: React.ReactNode; className?: string }) {
-  return <span className={cn("inline-flex h-6 items-center rounded-ctl border px-2 font-mono text-11 uppercase tracking-[0.06em]", tones[tone], className)}>{children}</span>;
+export function StatusPill({ tone, children, className, dot }: { tone: PillTone; children: React.ReactNode; className?: string; dot?: boolean }) {
+  return (
+    <span className={cn("inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-[4px] border px-2 font-mono text-11 uppercase tracking-[0.06em]", tones[tone], className)}>
+      {dot ? (
+        <span className="relative flex size-1.5">
+          <span aria-hidden className="absolute inset-0 animate-k-ping rounded-full bg-current" />
+          <span aria-hidden className="relative block size-1.5 rounded-full bg-current" />
+        </span>
+      ) : null}
+      {children}
+    </span>
+  );
 }
 
 /** LIVE / PAUSED / ATTESTATION STALE / ANALYZING … for a protocol. */
@@ -28,7 +38,11 @@ export function ProtocolStatusPill({ status, stale }: { status: string; stale?: 
     unsupported: ["neutral", "Waitlist"],
   };
   const [tone, label] = map[status] ?? ["neutral", status];
-  return <StatusPill tone={tone}>{label}</StatusPill>;
+  return (
+    <StatusPill tone={tone} dot={status === "live" || status === "analyzing"}>
+      {label}
+    </StatusPill>
+  );
 }
 
 export function VerdictDot({ kind }: { kind: string }) {

@@ -214,29 +214,31 @@ function endState(t: Trace, n: number): NodeState[] {
   });
 }
 
-/** Small static rail for pipeline progress (Analyze screen). */
-export function StageRail({ stages, current, failed, done }: { stages: { key: string; label: string }[]; current?: string; failed?: string; done?: boolean }) {
+/** Pipeline progress for the Analyze screen: one segment per stage, filled as the run moves through it. */
+export function StageRail({ stages, current, failed, done, waiting }: { stages: { key: string; label: string }[]; current?: string; failed?: string; done?: boolean; /** The current stage has not started: it is waiting on the reader. */ waiting?: boolean }) {
   const idx = stages.findIndex((s) => s.key === current);
   return (
-    <ol className="flex flex-wrap items-center gap-x-1 gap-y-2" aria-label="Pipeline stages">
+    <ol className="relative grid grid-flow-col auto-cols-[minmax(5.5rem,1fr)] gap-1.5 overflow-x-auto pb-1" aria-label="Pipeline stages">
       {stages.map((s, i) => {
-        const state = failed === s.key ? "block" : done || i < idx ? "pass" : i === idx ? "active" : "idle";
+        const state = failed === s.key ? "block" : done || (idx >= 0 && i < idx) ? "pass" : i === idx ? (waiting ? "next" : "active") : "idle";
         return (
-          <li key={s.key} className="flex items-center gap-1">
-            <span
-              className={cn(
-                "block size-2 rounded-full border",
-                state === "pass" && "border-pass bg-pass",
-                state === "active" && "animate-pulse border-text bg-text",
-                state === "block" && "border-block bg-block",
-                state === "idle" && "border-text-3",
-              )}
-            />
-            <span className={cn("font-mono text-11 uppercase tracking-[0.06em]", state === "active" ? "text-text" : state === "block" ? "text-block" : "text-text-3")}>
-              {s.label}
-              <span className="sr-only"> {state === "pass" ? "done" : state === "active" ? "running" : state === "block" ? "failed" : "pending"}</span>
+          <li key={s.key}>
+            <span aria-hidden className="block h-1 overflow-hidden rounded-full bg-line-2">
+              <span
+                className={cn(
+                  "block h-full rounded-full",
+                  state === "pass" && "w-full bg-pass",
+                  state === "block" && "w-full bg-block",
+                  state === "active" && "w-1/2 animate-k-pulse bg-text",
+                  state === "idle" && "w-0",
+                )}
+              />
             </span>
-            {i < stages.length - 1 ? <span aria-hidden className="mx-1 h-px w-4 bg-line" /> : null}
+            <span className={cn("mt-2.5 flex items-center gap-2 font-mono text-11 uppercase tracking-[0.06em]", state === "active" || state === "next" ? "text-text" : state === "block" ? "text-block" : state === "pass" ? "text-text-2" : "text-text-3")}>
+              <span className="k-tnum text-text-3">{String(i + 1).padStart(2, "0")}</span>
+              {s.label}
+              <span className="sr-only"> {state === "pass" ? "done" : state === "active" ? "running" : state === "block" ? "failed" : state === "next" ? "next" : "pending"}</span>
+            </span>
           </li>
         );
       })}

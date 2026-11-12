@@ -3,7 +3,8 @@ import Link from "next/link";
 import { AppBar } from "@/components/SiteNav";
 import { ProtocolStatusPill } from "@/components/StatusPill";
 import { ButtonLink } from "@/components/ui/Button";
-import { SectionLabel } from "@/components/ui/Section";
+import { Eyebrow, PageHead } from "@/components/ui/Page";
+import { ArrowRight, Plus } from "@/components/ui/Icons";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { useProtocols, useSession } from "@/api/queries";
 import { ApiError } from "@/api/errors";
@@ -21,40 +22,73 @@ export function protocolHref(p: Protocol) {
 export function ProtocolList() {
   const { signedIn } = useSession();
   const q = useProtocols();
+  const count = q.data?.items.length ?? 0;
   return (
     <div className="min-h-dvh">
-      <AppBar crumbs={[{ label: "Protocols" }]} right={<ButtonLink href="/connect" size="sm">Protect a protocol</ButtonLink>} />
-      <main id="main" className="k-container py-10">
-        <SectionLabel>Protocols</SectionLabel>
-        <h1 className="mt-3 text-32 font-medium">Your protocols</h1>
-        <div className="k-panel mt-8">
+      <AppBar crumbs={[{ label: "Protocols" }]} />
+      <main id="main" className="k-container pb-24 pt-10 md:pt-14">
+        <PageHead
+          eyebrow={<Eyebrow>Protocols</Eyebrow>}
+          title="Your protocols"
+          lede="Each one opens where you left it: the step it is on, or its dashboard once the guard is live."
+          right={
+            <ButtonLink href="/connect">
+              <Plus />
+              Protect a protocol
+            </ButtonLink>
+          }
+        />
+        <div className="mt-10 overflow-hidden rounded-panel border border-line-2 bg-surface">
           {q.isLoading ? (
             <LoadingBlock lines={4} />
           ) : q.isError ? (
             q.error instanceof ApiError && q.error.status === 401 && !signedIn ? (
-              <EmptyState action={<ButtonLink href="/connect">Sign in and link a protocol</ButtonLink>}>Sign in to see your protocols.</EmptyState>
+              <EmptyState title="Sign in to see your protocols" action={<ButtonLink href="/connect">Sign in and link a protocol</ButtonLink>}>
+                Protocols are tied to the GitHub account that linked them.
+              </EmptyState>
             ) : (
               <ErrorState what="protocols" error={q.error} onRetry={() => q.refetch()} />
             )
-          ) : !q.data?.items.length ? (
-            <EmptyState action={<ButtonLink href="/connect">Link your first protocol</ButtonLink>}>No protocols yet.</EmptyState>
+          ) : !count ? (
+            <EmptyState title="No protocols yet" action={<ButtonLink href="/connect">Link your first protocol</ButtonLink>}>
+              Paste a repo and Kronos maps it, drafts the invariants and attacks them on a fork.
+            </EmptyState>
           ) : (
-            <ul className="divide-y divide-line">
-              {q.data.items.map((p) => (
-                <li key={p.id}>
-                  <Link href={protocolHref(p)} className="grid gap-2 px-5 py-4 hover:bg-surface-2 md:grid-cols-12 md:items-center">
-                    <span className="text-17 text-text md:col-span-4">{p.name}</span>
-                    <span className="font-mono text-13 text-text-3 md:col-span-3">{chainName(p.chainId)}</span>
-                    <span className="truncate font-mono text-13 text-text-3 md:col-span-3">{p.repoUrl?.replace(/^https:\/\/github\.com\//, "") ?? p.websiteUrl}</span>
-                    <span className="md:col-span-2 md:text-right">
-                      <ProtocolStatusPill status={p.status} />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="k-bar hidden md:grid md:grid-cols-12 md:gap-4">
+                <span className="md:col-span-4">Protocol</span>
+                <span className="md:col-span-2">Chain</span>
+                <span className="md:col-span-4">Source</span>
+                <span className="md:col-span-2 md:text-right">Status</span>
+              </div>
+              <ul>
+                {q.data!.items.map((p) => (
+                  <li key={p.id} className="border-b border-line last:border-b-0">
+                    <Link href={protocolHref(p)} className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1.5 px-4 py-4 transition-colors duration-k hover:bg-surface-2 md:grid-cols-12 md:px-5 md:py-5">
+                      <span className="flex items-center gap-3 text-17 font-medium text-text md:col-span-4">
+                        <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-ctl border border-line-2 bg-surface-2 font-mono text-13 uppercase text-text-2">
+                          {p.name.slice(0, 1)}
+                        </span>
+                        <span className="truncate">{p.name}</span>
+                      </span>
+                      <span className="row-start-1 col-start-2 justify-self-end md:order-last md:col-span-2 md:row-auto md:flex md:items-center md:justify-end md:gap-3">
+                        <ProtocolStatusPill status={p.status} />
+                        <ArrowRight className="hidden size-4 text-text-3 transition-[color,transform] duration-k group-hover:translate-x-0.5 group-hover:text-text md:block" />
+                      </span>
+                      <span className="col-span-2 pl-12 font-mono text-13 text-text-2 md:col-span-2 md:pl-0">{chainName(p.chainId)}</span>
+                      <span className="col-span-2 truncate pl-12 font-mono text-13 text-text-3 md:col-span-4 md:pl-0">{p.repoUrl?.replace(/^https:\/\/github\.com\//, "") ?? p.websiteUrl}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
+        {count ? (
+          <p className="k-tnum mt-3 font-mono text-11 text-text-3">
+            {count} protocol{count === 1 ? "" : "s"}
+          </p>
+        ) : null}
       </main>
     </div>
   );

@@ -16,29 +16,34 @@ export function formatParam(name: string, v: number) {
 
 export function Stepper({ name, value, onChange, disabled }: { name: string; value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const step = stepFor(name, value);
+  const btn = "grid h-full w-9 place-items-center text-text-2 transition-colors duration-k hover:bg-surface hover:text-text disabled:cursor-not-allowed disabled:hover:bg-transparent";
   return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-13 text-text-3">{name}</span>
-      <div className={cn("flex h-9 items-center rounded-ctl border border-line bg-surface-2", disabled && "opacity-50")}>
-        <button type="button" className="h-full w-9 font-mono text-text-2 hover:text-text disabled:cursor-not-allowed" aria-label={`Decrease ${name}`} disabled={disabled || value - step < 0} onClick={() => onChange(Math.max(0, value - step))}>
-          −
-        </button>
-        <input
-          aria-label={name}
-          className="k-tnum h-full w-20 border-x border-line bg-transparent text-center font-mono text-13 text-text"
-          inputMode="numeric"
-          value={value}
-          disabled={disabled}
-          onChange={(e) => {
-            const n = Number(e.target.value.replace(/[^\d]/g, ""));
-            if (Number.isFinite(n)) onChange(n);
-          }}
-        />
-        <button type="button" className="h-full w-9 font-mono text-text-2 hover:text-text disabled:cursor-not-allowed" aria-label={`Increase ${name}`} disabled={disabled} onClick={() => onChange(value + step)}>
-          +
-        </button>
+    <div className="grid items-center gap-x-3 gap-y-1.5 min-[520px]:grid-cols-[1fr_auto]">
+      <span className="min-w-0 truncate font-mono text-13 text-text-2" title={name}>
+        {name}
+      </span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="k-tnum min-[520px]:w-14 min-[520px]:text-right font-mono text-13 text-text">{formatParam(name, value)}</span>
+        <div className={cn("flex h-9 items-center overflow-hidden rounded-ctl border border-line-2 bg-surface-2 font-mono", disabled && "opacity-50")}>
+          <button type="button" className={btn} aria-label={`Decrease ${name}`} disabled={disabled || value - step < 0} onClick={() => onChange(Math.max(0, value - step))}>
+            −
+          </button>
+          <input
+            aria-label={name}
+            className="k-tnum h-full w-[4.5rem] border-x border-line-2 bg-transparent text-center text-13 text-text focus-visible:bg-surface focus-visible:outline-none"
+            inputMode="numeric"
+            value={value}
+            disabled={disabled}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(/[^\d]/g, ""));
+              if (Number.isFinite(n)) onChange(n);
+            }}
+          />
+          <button type="button" className={btn} aria-label={`Increase ${name}`} disabled={disabled} onClick={() => onChange(value + step)}>
+            +
+          </button>
+        </div>
       </div>
-      <span className="k-tnum font-mono text-13 text-text">{formatParam(name, value)}</span>
     </div>
   );
 }

@@ -24,10 +24,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <T.Root
             key={t.id}
             onOpenChange={(o) => !o && setItems((xs) => xs.filter((x) => x.id !== t.id))}
-            className="k-panel grid gap-1 p-4 data-[state=closed]:opacity-0"
+            className="grid animate-k-row-in grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-panel border border-line-2 bg-surface p-4 shadow-[0_16px_48px_-16px_rgb(0_0_0/0.7)] data-[state=closed]:opacity-0"
           >
-            <T.Title className={cn("font-mono text-13", { neutral: "text-text", pass: "text-pass", block: "text-block", queue: "text-queue" }[t.tone])}>{t.title}</T.Title>
-            {t.body ? <T.Description className="text-13 text-text-2">{t.body}</T.Description> : null}
+            <span aria-hidden className={cn("mt-1.5 block size-2 rounded-full", { neutral: "bg-text-3", pass: "bg-pass", block: "bg-block", queue: "bg-queue" }[t.tone])} />
+            <T.Title className="text-15 font-medium text-text first-letter:uppercase">{t.title}</T.Title>
+            {t.body ? <T.Description className="col-start-2 break-words text-13 text-text-2">{t.body}</T.Description> : null}
           </T.Root>
         ))}
         <T.Viewport className="fixed bottom-4 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2 outline-none" />

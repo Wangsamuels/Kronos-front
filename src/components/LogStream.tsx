@@ -90,12 +90,12 @@ export function LogStream({ events, live, header, className }: { events: RunEven
 
   const visible = virtual ? rows.slice(range[0], range[1]) : rows;
   return (
-    <div className={cn("k-panel relative flex min-h-0 flex-col", className)}>
+    <div className={cn("relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-panel border border-line-2 bg-surface", className)}>
       {header}
       <div
         ref={ref}
         onScroll={onScroll}
-        className="min-h-[320px] flex-1 overflow-y-auto bg-surface-2/40 px-4 py-3 font-mono text-13 lg:max-h-[620px]"
+        className="min-h-[360px] flex-1 overflow-y-auto px-4 py-4 font-mono text-13 leading-relaxed focus-visible:outline-offset-[-2px] md:px-5 lg:h-[640px] lg:max-h-[640px]"
         role="log"
         aria-live="polite"
         aria-relevant="additions"
@@ -105,8 +105,8 @@ export function LogStream({ events, live, header, className }: { events: RunEven
         {virtual ? <div style={{ height: range[0] * ROW_H }} /> : null}
         {visible.map((r) =>
           r.kind === "header" ? (
-            <div key={r.key} className={cn("flex items-center gap-3 pb-1 pt-3 first:pt-0", virtual && "h-[22px] py-0")}>
-              <span className="text-11 tracking-[0.06em] text-text">{r.stage}</span>
+            <div key={r.key} className={cn("flex items-center gap-3 pb-1.5 pt-5 first:pt-0", virtual && "h-[22px] py-0")}>
+              <span className="rounded-[4px] border border-line-2 bg-surface-2 px-1.5 py-px text-11 tracking-[0.06em] text-text">{r.stage}</span>
               <span aria-hidden className="h-px flex-1 bg-line" />
               <span className="k-tnum text-11 text-text-3">{r.elapsed}</span>
             </div>
@@ -115,7 +115,7 @@ export function LogStream({ events, live, header, className }: { events: RunEven
           ),
         )}
         {virtual ? <div style={{ height: Math.max(0, rows.length - range[1]) * ROW_H }} /> : null}
-        {live ? <div className="mt-1 h-4 w-2 animate-pulse bg-text-3" aria-hidden /> : null}
+        {live ? <div className="mt-1.5 h-4 w-2 animate-k-pulse bg-text-2" aria-hidden /> : null}
       </div>
       {!follow ? (
         <button
@@ -124,9 +124,10 @@ export function LogStream({ events, live, header, className }: { events: RunEven
             const el = ref.current;
             if (el) el.scrollTop = el.scrollHeight;
           }}
-          className="absolute bottom-3 right-4 h-8 rounded-ctl border border-line bg-surface px-3 font-mono text-11 text-text-2 hover:text-text"
+          className="absolute bottom-4 right-4 inline-flex h-9 items-center gap-2 rounded-full border border-line-2 bg-surface-2 px-3.5 font-mono text-11 uppercase tracking-[0.06em] text-text shadow-[0_8px_24px_-8px_rgb(0_0_0/0.8)] transition-colors duration-k hover:border-text-3"
         >
-          ↓ follow live
+          {live ? <span aria-hidden className="block size-1.5 animate-k-pulse rounded-full bg-pass" /> : null}
+          {live ? "Follow live" : "Jump to latest"}
         </button>
       ) : null}
     </div>
@@ -139,8 +140,10 @@ function Line({ ev, fixed }: { ev: RunEvent; fixed?: boolean }) {
   const tone =
     ev.type === "error" || ev.level === "error" || notBlocked
       ? "text-block"
-      : ev.type === "done" || blocked
-        ? "text-pass"
+      : blocked
+        ? "text-block"
+        : ev.type === "done"
+          ? "text-pass"
         : ev.level === "warn"
           ? "text-queue"
           : ev.type === "stage"
@@ -149,8 +152,8 @@ function Line({ ev, fixed }: { ev: RunEvent; fixed?: boolean }) {
   const tag = ev.type === "entrypoint" ? "entry" : ev.type === "invariant" ? "inv" : ev.type === "stage" ? "›" : ev.type === "done" ? "done" : ev.type === "error" ? "error" : "";
   return (
     <div className={cn("flex gap-3 py-0.5", fixed && "h-[22px] overflow-hidden whitespace-nowrap py-0")}>
-      <span className="k-tnum w-[64px] shrink-0 text-text-3">{clockTime(ev.ts)}</span>
-      <span className="w-10 shrink-0 text-text-3">{tag}</span>
+      <span className="k-tnum hidden w-[64px] shrink-0 text-text-3 min-[520px]:block">{clockTime(ev.ts)}</span>
+      <span className="w-10 shrink-0 text-11 uppercase leading-[1.7] tracking-[0.04em] text-text-3">{tag}</span>
       <span className={cn("min-w-0", tone, fixed ? "truncate" : "break-words")}>{ev.message}</span>
     </div>
   );

@@ -132,7 +132,7 @@ export function RepoInput({
         <Field id={`${id}-w`} label="Website" optional error={wErr}>
           <input
             id={`${id}-w`}
-            className="k-input h-12 border-0 bg-transparent pl-24"
+            className="k-input h-12 border-0 bg-transparent pl-24 focus-visible:shadow-none"
             inputMode="url"
             autoComplete="url"
             placeholder="https://minilend.xyz"
@@ -147,7 +147,7 @@ export function RepoInput({
         <Field id={`${id}-r`} label="Repo" error={rErr}>
           <input
             id={`${id}-r`}
-            className="k-input h-12 border-0 bg-transparent pl-24"
+            className="k-input h-12 border-0 bg-transparent pl-24 focus-visible:shadow-none"
             inputMode="url"
             placeholder="github.com/minilend/protocol"
             value={v.repo}
@@ -178,7 +178,7 @@ export function RepoInput({
 function Field({ id, label, optional, error, children }: { id: string; label: string; optional?: boolean; error: string | null; children: React.ReactNode }) {
   return (
     <div>
-      <div className={cn("relative rounded-ctl border bg-surface-2 transition-colors duration-k focus-within:border-text-3", error ? "border-block" : "border-line")}>
+      <div className={cn("relative rounded-ctl border bg-surface-2 transition-colors duration-k focus-within:border-text-2 focus-within:shadow-[0_0_0_3px_rgb(var(--text)/0.1)]", error ? "border-block" : "border-line-2")}>
         <label htmlFor={id} className="k-label pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
           {label}
           {optional ? <span className="sr-only"> (optional)</span> : null}

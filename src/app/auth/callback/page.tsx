@@ -32,21 +32,25 @@ export default function AuthCallback() {
   return (
     <div className="min-h-dvh">
       <AppBar />
-      <main id="main" className="mx-auto max-w-[560px] px-5 py-16">
-        {error ? (
-          <div role="alert" className="k-panel p-5">
-            <p className="text-17">GitHub sign-in didn’t complete.</p>
-            <p className="mt-2 font-mono text-13 text-block">{error}</p>
-            <ButtonLink href="/connect" variant="secondary" className="mt-4">
-              Back to Link
-            </ButtonLink>
-          </div>
-        ) : (
-          <>
-            <p className="k-label">Signing you in</p>
-            <LoadingBlock lines={2} className="px-0" />
-          </>
-        )}
+      <main id="main" className="k-container py-20 md:py-28">
+        <div className="max-w-[520px]">
+          {error ? (
+            <div role="alert">
+              <span className="k-tag k-tag-block">sign-in failed</span>
+              <h1 className="mt-5 text-title font-medium text-text">GitHub sign-in didn’t complete.</h1>
+              <p className="mt-3 break-words font-mono text-13 text-text-2">{error}</p>
+              <ButtonLink href="/connect" className="mt-7">
+                Back to Link
+              </ButtonLink>
+            </div>
+          ) : (
+            <div role="status">
+              <span className="k-tag k-tag-idle">signing you in</span>
+              <h1 className="mt-5 text-title font-medium text-text">One moment.</h1>
+              <LoadingBlock lines={2} className="mt-4 px-0" />
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

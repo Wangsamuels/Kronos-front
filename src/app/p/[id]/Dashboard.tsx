@@ -9,7 +9,8 @@ import { StatTile } from "@/components/dashboard/StatTile";
 import { EventRow } from "@/components/dashboard/EventRow";
 import { QueueRow } from "@/components/dashboard/QueueRow";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { Panel } from "@/components/ui/Section";
+import { Notice } from "@/components/ui/Page";
+import { Chevron, Gear, Lock, Refresh } from "@/components/ui/Icons";
 import { EmptyState, ErrorState, LoadingBlock, StaleNote } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { qk, useAdminQueue, useEvents, useOverview, useReanalyze, useResults, useRunPackage } from "@/api/queries";
@@ -52,7 +53,7 @@ export function Dashboard({ id }: { id: string }) {
     return (
       <Frame>
         <LoadingBlock lines={3} />
-        <div className="mt-6 grid gap-4 md:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="k-panel h-36 animate-pulse bg-surface" />)}</div>
+        <div className="mt-6 grid gap-4 md:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="k-shimmer h-40 rounded-panel" />)}</div>
       </Frame>
     );
   if (ov.isError || !ov.data)
@@ -107,72 +108,110 @@ export function Dashboard({ id }: { id: string }) {
     }
   };
 
+  const counts: Record<string, number> = {
+    all: events.length,
+    blocked: events.filter((e) => e.kind === "blocked").length,
+    queued: events.filter((e) => e.kind === "queued").length,
+    released: events.filter((e) => e.kind === "released").length,
+    admin: events.filter((e) => e.kind.startsWith("admin_")).length,
+  };
+
   return (
     <Frame name={p.name}>
       {/* 1 — header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-44 font-medium">{p.name}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <h1 className="text-[clamp(2rem,2.4vw+1.25rem,3rem)] font-medium leading-[1.04] tracking-[-0.035em] text-text">{p.name}</h1>
             <ProtocolStatusPill status={p.status} stale={stale} />
           </div>
-          <p className="mt-2 font-mono text-13 text-text-3">
-            {chainName(p.chainId)} · guard {short(d?.guardAddress)}
-            {d?.timelockAddress ? ` · timelock ${short(d.timelockAddress)}` : ""}
-          </p>
+          <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-mono text-13">
+            {[
+              ["chain", chainName(p.chainId)],
+              ["guard", short(d?.guardAddress)],
+              ...(d?.timelockAddress ? [["timelock", short(d.timelockAddress)]] : []),
+              ...(pkg.data ? [["package", `v${pkg.data.version}`]] : []),
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-baseline gap-2">
+                <dt className="text-11 uppercase tracking-[0.06em] text-text-3">{k}</dt>
+                <dd className="text-text-2">{v}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-13 text-text-3">{pkg.data ? `v${pkg.data.version}` : ""}</span>
-          <Button variant="secondary" size="sm" onClick={onReanalyze} busy={reanalyze.isPending}>
+          <Button variant="secondary" onClick={onReanalyze} busy={reanalyze.isPending}>
+            <Refresh className="size-3.5" />
             Re-analyze
           </Button>
-          <ButtonLink href={`/p/${id}/settings`} variant="secondary" size="sm">
+          <ButtonLink href={`/p/${id}/settings`} variant="secondary">
+            <Gear className="size-3.5" />
             Settings
           </ButtonLink>
         </div>
       </div>
       {p.status !== "live" && p.status !== "paused" ? (
-        <p className="mt-4 rounded-ctl border border-line bg-surface px-4 py-3 text-15 text-text-2">
-          <span className="mr-2 font-mono text-13 text-queue/90">not live</span>This guard is not live yet. <a className="text-text underline" href={`/p/${id}/verify`}>Finish onboarding →</a>
-        </p>
+        <Notice className="mt-6" word="not live">
+          This guard is not live yet.{" "}
+          <a className="k-link" href={`/p/${id}/verify`}>
+            Finish onboarding
+          </a>
+        </Notice>
       ) : null}
 
       {/* 2 — stat tiles */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Blocked · 24h" value={stats24h.blocked} tone={stats24h.blocked ? "block" : undefined} series={hourly(events, (e) => e.kind === "blocked")} />
-        <StatTile label="Outflow queued now" value={outflowTotal} tone={outflowTotal ? "queue" : undefined} unit={queuedOutflow[0] ? assetUnit(queuedOutflow[0].asset) : undefined} series={hourly(events, (e) => e.kind === "queued", (e) => Number(e.amount) || 0)} />
-        <StatTile label="Released · 24h" value={stats24h.released} series={hourly(events, (e) => e.kind === "released")} />
+      <div className="mt-10 grid gap-px overflow-hidden rounded-panel border border-line-2 bg-line sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="Blocked" window="24h" value={stats24h.blocked} tone={stats24h.blocked ? "block" : undefined} series={hourly(events, (e) => e.kind === "blocked")} />
+        <StatTile label="Outflow queued" window="now" value={outflowTotal} tone={outflowTotal ? "queue" : undefined} unit={queuedOutflow[0] ? assetUnit(queuedOutflow[0].asset) : undefined} series={hourly(events, (e) => e.kind === "queued", (e) => Number(e.amount) || 0)} />
+        <StatTile label="Released" window="24h" value={stats24h.released} series={hourly(events, (e) => e.kind === "released")} />
         {attestation ? (
           <StatTile
             label="Attestation age"
+            window={stale ? "stale" : "fresh"}
             value={attestation.ageSeconds}
             unit="s"
             tone={stale ? "block" : "pass"}
             foot={
-              <p className="font-mono text-11 text-text-3">
-                block {num(attestation.block)} · <span className={attestation.oracleOk ? "text-pass" : "text-block"}>oracle {attestation.oracleOk ? "ok" : "fail"}</span> ·{" "}
-                <span className={attestation.solvencyOk ? "text-pass" : "text-block"}>solvency {attestation.solvencyOk ? "ok" : "fail"}</span>
-              </p>
+              <ul className="grid gap-1.5 font-mono text-11 text-text-3">
+                <li className="k-tnum">block {num(attestation.block)}</li>
+                <li className="flex gap-4">
+                  <span className={cn("flex items-center gap-1.5", attestation.oracleOk ? "text-pass" : "text-block")}>
+                    <span aria-hidden className="block size-1.5 rounded-full bg-current" />
+                    oracle {attestation.oracleOk ? "ok" : "fail"}
+                  </span>
+                  <span className={cn("flex items-center gap-1.5", attestation.solvencyOk ? "text-pass" : "text-block")}>
+                    <span aria-hidden className="block size-1.5 rounded-full bg-current" />
+                    solvency {attestation.solvencyOk ? "ok" : "fail"}
+                  </span>
+                </li>
+              </ul>
             }
           />
         ) : (
-          <div className="k-panel p-5">
-            <p className="k-label">Attestation age</p>
-            <p className="mt-3 text-32 text-text-3">—</p>
-            <p className="mt-4 font-mono text-11 text-block">no attestation yet · large outflows wait</p>
+          <div className="bg-surface p-5">
+            <p className="text-13 text-text-2">Attestation age</p>
+            <p className="mt-3 font-mono text-[40px] leading-none text-text-3">—</p>
+            <p className="mt-6 font-mono text-11 text-block">no attestation yet · large outflows wait</p>
           </div>
         )}
       </div>
-      <div className="mt-2 flex justify-end">
+      <div className="mt-3 flex justify-end">
         <StaleNote updatedAt={ov.dataUpdatedAt} maxAgeMs={30_000} />
       </div>
 
       {/* 3 — needs attention (hidden when empty) */}
       {attention > 0 ? (
-        <Panel className="mt-6" label="Needs attention" right={<span className="font-mono text-13 text-queue">{attention} waiting</span>}>
-          <div className="hidden grid-cols-12 gap-3 border-b border-line px-5 py-2 md:grid">
-            {["Tier", "Action", "Proposer", "ETA", ""].map((h, i) => (
-              <span key={i} className={cn("k-label", ["col-span-3", "col-span-4", "col-span-2", "col-span-2", "col-span-1"][i])}>
+        <section className="mt-8 overflow-hidden rounded-panel border border-queue/40 bg-surface" aria-label="Needs attention">
+          <header className="flex min-h-12 items-center justify-between gap-3 border-b border-queue/25 bg-queue/[0.06] px-4 md:px-5">
+            <h2 className="flex items-center gap-2.5 text-15 font-medium text-text">
+              <span aria-hidden className="block size-2 animate-k-pulse rounded-full bg-queue" />
+              Needs attention
+            </h2>
+            <span className="k-tag k-tag-queue">{attention} waiting</span>
+          </header>
+          <div className="hidden min-h-10 grid-cols-12 items-center gap-3 border-b border-line px-5 md:grid">
+            {["Type", "Action", "Proposer", "ETA", ""].map((h, i) => (
+              <span key={i} className={cn("k-label", ["col-span-3", "col-span-3", "col-span-2", "col-span-2", "col-span-2"][i])}>
                 {h}
               </span>
             ))}
@@ -220,31 +259,36 @@ export function Dashboard({ id }: { id: string }) {
               );
             })}
           </ul>
-        </Panel>
+        </section>
       ) : null}
 
       {/* 4 — activity feed */}
-      <Panel
-        className="mt-6"
-        label="Activity"
-        right={
-          <div role="group" aria-label="Filter by verdict" className="flex flex-wrap gap-1">
-            {CHIPS.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => setChip(c.key)}
-                aria-pressed={chip === c.key}
-                className={cn("h-8 rounded-ctl border px-2.5 font-mono text-11 uppercase tracking-[0.06em]", chip === c.key ? "border-text-3 bg-surface-2 text-text" : "border-line text-text-3 hover:text-text")}
-              >
-                {c.label}
-              </button>
-            ))}
+      <section className="mt-8 overflow-hidden rounded-panel border border-line-2 bg-surface" aria-label="Activity">
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-line px-4 py-2.5 md:px-5">
+          <h2 className="text-15 font-medium text-text">Activity</h2>
+          <div role="group" aria-label="Filter by verdict" className="-mx-1 flex max-w-full gap-1 overflow-x-auto px-1">
+            {CHIPS.map((c) => {
+              const on = chip === c.key;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => setChip(c.key)}
+                  aria-pressed={on}
+                  className={cn(
+                    "inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-3 text-13 transition-colors duration-k",
+                    on ? "border-text bg-text text-bg" : "border-line-2 text-text-2 hover:border-text-3 hover:text-text",
+                  )}
+                >
+                  {c.label}
+                  <span className={cn("k-tnum font-mono text-11", on ? "text-bg/70" : "text-text-3")}>{counts[c.key] ?? 0}</span>
+                </button>
+              );
+            })}
           </div>
-        }
-      >
-        <div className="hidden grid-cols-12 gap-4 border-b border-line px-5 py-2 md:grid">
-          {["Time", "Verdict", "Action", "Amount", "Invariant", "Tx"].map((h) => (
-            <span key={h} className="k-label col-span-2">
+        </header>
+        <div className="hidden min-h-10 grid-cols-12 items-center gap-4 border-b border-line px-5 md:grid">
+          {["Time", "Verdict", "Action", "Amount", "Invariant", "Tx"].map((h, i) => (
+            <span key={h} className={cn("k-label col-span-2", i === 5 && "text-right")}>
               {h}
             </span>
           ))}
@@ -254,23 +298,29 @@ export function Dashboard({ id }: { id: string }) {
         ) : feed.isError ? (
           <ErrorState what="activity" error={feed.error} onRetry={() => feed.refetch()} />
         ) : items.length === 0 ? (
-          <EmptyState>Nothing {chip === "all" ? "" : `${chip} `}in this window. Blocked, queued and released actions show up here within 10 seconds.</EmptyState>
+          <EmptyState title={chip === "all" ? "Nothing yet" : `Nothing ${chip} in this window`}>Blocked, queued and released actions show up here within 10 seconds.</EmptyState>
         ) : (
           <ul aria-live="polite">{items.map((e) => <EventRow key={e.id} e={e} chainId={p.chainId} />)}</ul>
         )}
-        <div className="flex justify-end border-t border-line px-5 py-2">
+        <div className="flex justify-end border-t border-line px-5 py-2.5">
           <StaleNote updatedAt={feed.dataUpdatedAt} maxAgeMs={30_000} />
         </div>
-      </Panel>
+      </section>
 
       {/* 5 — guard config (collapsed, read-only) */}
-      <section className="k-panel mt-6">
-        <button aria-expanded={showConfig} onClick={() => setShowConfig((s) => !s)} className="flex w-full items-center justify-between px-5 py-4 text-left">
-          <span className="k-label">Guard config · read-only</span>
-          <span className="font-mono text-13 text-text-3">{showConfig ? "− collapse" : "+ expand"}</span>
+      <section className="mt-8 overflow-hidden rounded-panel border border-line-2 bg-surface">
+        <button aria-expanded={showConfig} onClick={() => setShowConfig((s) => !s)} className="flex min-h-14 w-full items-center justify-between gap-4 px-4 text-left transition-colors duration-k hover:bg-surface-2/50 md:px-5">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-15 font-medium text-text">Guard config</span>
+            <span className="k-tag k-tag-idle">
+              <Lock className="size-3" />
+              read-only
+            </span>
+          </span>
+          <Chevron className={cn("size-4 shrink-0 text-text-3 transition-transform duration-k", showConfig && "rotate-180")} />
         </button>
         {showConfig ? (
-          <div className="grid gap-6 border-t border-line p-5">
+          <div className="grid gap-8 border-t border-line p-4 md:p-5">
             {results.isLoading ? (
               <LoadingBlock lines={4} className="p-0" />
             ) : results.isError ? (
@@ -278,29 +328,33 @@ export function Dashboard({ id }: { id: string }) {
             ) : results.data ? (
               <>
                 <div>
-                  <p className="k-label mb-2">Active invariants</p>
-                  <ul className="grid gap-1 font-mono text-13">
+                  <p className="k-label mb-3">Active invariants</p>
+                  <ul className="overflow-hidden rounded-ctl border border-line font-mono text-13">
                     {results.data.invariants
                       .filter((i) => i.status === "approved")
                       .map((i) => (
-                        <li key={i.id} className="flex flex-wrap gap-x-3">
+                        <li key={i.id} className="grid gap-x-4 gap-y-1 border-b border-line px-4 py-2.5 last:border-b-0 md:grid-cols-[16rem_1fr]">
                           <span className="text-text">{i.template}</span>
-                          <span className="text-text-3">{Object.entries(i.params as Record<string, unknown>).map(([k, v]) => `${k}=${String(v)}`).join(" ") || "—"}</span>
+                          <span className="break-words text-text-3">{Object.entries(i.params as Record<string, unknown>).map(([k, v]) => `${k}=${String(v)}`).join("  ") || "—"}</span>
                         </li>
                       ))}
                   </ul>
                 </div>
                 <div>
-                  <p className="k-label mb-2">Intent schemas</p>
-                  <p className="font-mono text-13 text-text-2">
-                    {results.data.intentSchemas.map((s) => ((s.eip712 as { primaryType?: string } | null)?.primaryType ?? "Intent")).join(" · ")}
-                  </p>
+                  <p className="k-label mb-3">Intent schemas</p>
+                  <ul className="flex flex-wrap gap-2">
+                    {results.data.intentSchemas.map((s) => (
+                      <li key={s.id} className="rounded-[4px] border border-line-2 bg-surface-2 px-2.5 py-1 font-mono text-13 text-text-2">
+                        {(s.eip712 as { primaryType?: string } | null)?.primaryType ?? "Intent"}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
                 <div>
-                  <p className="k-label mb-2">Timelock tiers</p>
+                  <p className="k-label mb-3">Timelock tiers</p>
                   <TierTable tiers={results.data.tiers} entries={new Map(results.data.entrypoints.map((e) => [e.id, e]))} locked onChange={() => {}} />
                 </div>
-                <p className="text-13 text-text-3">Changing any of this means Re-analyze: the pipeline reruns and you review the diff.</p>
+                <p className="text-13 text-text-3">To change any of this, re-analyze. The pipeline reruns and you review the diff before anything ships.</p>
               </>
             ) : null}
           </div>
@@ -318,8 +372,8 @@ function assetUnit(asset: string) {
 function Frame({ children, name }: { children: React.ReactNode; name?: string }) {
   return (
     <div className="min-h-dvh">
-      <AppBar crumbs={[{ href: "/p", label: "Protocols" }, { label: name ?? "…" }]} right={<ButtonLink href="/p" variant="secondary" size="sm">All protocols</ButtonLink>} />
-      <main id="main" className="k-container py-10">
+      <AppBar crumbs={[{ href: "/p", label: "Protocols" }, { label: name ?? "…" }]} />
+      <main id="main" className="k-container pb-24 pt-10 md:pt-14">
         {children}
       </main>
     </div>

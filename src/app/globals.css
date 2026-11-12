@@ -79,7 +79,7 @@
 
 @layer components {
   .k-container {
-    @apply mx-auto w-full max-w-grid px-5 md:px-8;
+    @apply mx-auto w-full max-w-grid px-5 md:px-10 lg:px-14;
   }
   /* The page frame: one continuous drawing-sheet column. Sections are ruled off inside it and every
      rule ends in a registration mark, so the whole page reads as a single sheet. */
@@ -180,11 +180,41 @@
     @apply rounded-panel border border-line bg-surface;
   }
   .k-input {
-    @apply h-11 w-full rounded-ctl border border-line bg-surface-2 px-3 font-mono text-13 text-text placeholder:text-text-3;
+    @apply h-11 w-full rounded-ctl border border-line-2 bg-surface-2 px-3 font-mono text-13 text-text placeholder:text-text-3;
     transition: border-color 160ms var(--ease);
   }
   .k-input:hover {
     border-color: rgb(var(--text-3));
+  }
+  .k-input:focus-visible {
+    outline: none;
+    border-color: rgb(var(--text-2));
+    box-shadow: 0 0 0 3px rgb(var(--text) / 0.1);
+    border-radius: 6px;
+  }
+  .k-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  /* Panel header strip: the same 44px mono bar on every panel in the app. */
+  .k-bar {
+    @apply flex min-h-11 items-center justify-between gap-3 border-b border-line px-4 font-mono text-11 uppercase text-text-3 md:px-5;
+    letter-spacing: 0.06em;
+  }
+  .k-shimmer {
+    background: linear-gradient(90deg, rgb(var(--surface-2)) 0%, rgb(var(--line)) 50%, rgb(var(--surface-2)) 100%);
+    background-size: 200% 100%;
+    animation: k-shimmer 1.6s linear infinite;
+  }
+  @keyframes k-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes k-spin {
+    to { transform: rotate(360deg); }
+  }
+  .k-spin {
+    animation: k-spin 0.8s linear infinite;
   }
   .k-input[aria-invalid="true"] {
     border-color: rgb(var(--block));

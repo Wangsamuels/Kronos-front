@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { SectionLabel } from "@/components/ui/Section";
+import { Field, PageHead, StepEyebrow } from "@/components/ui/Page";
+import { ArrowRight, Check, Cross, Spinner } from "@/components/ui/Icons";
 import { ErrorState, LoadingBlock } from "@/components/ui/States";
 import { useDeployments, useProtocol, useVerifyDeployment } from "@/api/queries";
 import { errorMessage } from "@/api/errors";
@@ -45,7 +46,7 @@ export function VerifyScreen({ id }: { id: string }) {
   }, [result]);
 
   const shell = (c: React.ReactNode) => (
-    <OnboardingShell step="verify" protocolId={id}>
+    <OnboardingShell step="verify" protocolId={id} wide>
       {c}
     </OnboardingShell>
   );
@@ -67,81 +68,116 @@ export function VerifyScreen({ id }: { id: string }) {
     } catch {}
   };
 
+  const passed = result ? checks.slice(0, shown).filter((c) => c.ok).length : 0;
+  const total = result ? checks.length : EXPECTED.length;
+
   return shell(
     <>
-      <SectionLabel>Step 5 of 5 · Verify</SectionLabel>
-      <h1 className="mt-3 text-32 font-medium">Verify the deployment and go live</h1>
-      <p className="mt-2 text-15 text-text-2">Kronos reads the deployed guard on {chainName(p.chainId)} and only flips it live when every on-chain check passes.</p>
+      <PageHead
+        eyebrow={<StepEyebrow n={5} label="Verify" />}
+        title="Verify the deployment and go live"
+        lede={`Kronos reads the deployed guard on ${chainName(p.chainId)}. It goes live only when every on-chain check passes.`}
+      />
 
-      <form
-        className="mt-8 grid gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!gErr && !tErr && guard) void run();
-        }}
-      >
-        <label className="grid gap-2">
-          <span className="k-label">Guard address</span>
-          <input className="k-input" placeholder="0x…" value={guard} onChange={(e) => setGuard(e.target.value.trim())} aria-invalid={!!gErr} spellCheck={false} />
-          {gErr ? <span className="font-mono text-11 text-block">{gErr}</span> : deployments.data?.[0] ? <span className="font-mono text-11 text-text-3">auto-filled from the detected deployment</span> : null}
-        </label>
-        <label className="grid gap-2">
-          <span className="k-label">Timelock address (optional, read from the guard otherwise)</span>
-          <input className="k-input" placeholder="0x…" value={timelock} onChange={(e) => setTimelock(e.target.value.trim())} aria-invalid={!!tErr} spellCheck={false} />
-        </label>
-        <div>
-          <Button type="submit" size="lg" disabled={!guard || !!gErr || !!tErr} busy={verify.isPending}>
-            {result ? "Verify again" : "Verify on-chain"}
-          </Button>
-        </div>
-        {verify.isError ? (
-          <p role="alert" className="font-mono text-13 text-block">
-            {errorMessage(verify.error)}
-          </p>
-        ) : null}
-      </form>
+      <div className="mt-10 grid gap-6 lg:grid-cols-12 lg:gap-10">
+        <div className="grid content-start gap-6 lg:col-span-5">
+          <form
+            className="grid gap-5 rounded-panel border border-line-2 bg-surface p-5 md:p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!gErr && !tErr && guard) void run();
+            }}
+          >
+            <Field label="Guard address" error={gErr} hint={deployments.data?.[0] ? "Auto-filled from the detected deployment." : "The address the deploy script printed."}>
+              <input className="k-input" placeholder="0x…" value={guard} onChange={(e) => setGuard(e.target.value.trim())} aria-invalid={!!gErr} spellCheck={false} autoComplete="off" />
+            </Field>
+            <Field label="Timelock address" optional error={tErr} hint="Read from the guard when left empty.">
+              <input className="k-input" placeholder="0x…" value={timelock} onChange={(e) => setTimelock(e.target.value.trim())} aria-invalid={!!tErr} spellCheck={false} autoComplete="off" />
+            </Field>
+            <Button type="submit" size="lg" disabled={!guard || !!gErr || !!tErr} busy={verify.isPending} className="w-full">
+              {result ? "Verify again" : "Verify on-chain"}
+              {verify.isPending ? null : <ArrowRight />}
+            </Button>
+            {verify.isError ? (
+              <p role="alert" className="font-mono text-13 text-block">
+                {errorMessage(verify.error)}
+              </p>
+            ) : null}
+          </form>
 
-      <section className="k-panel mt-8" aria-live="polite" aria-label="Verification checklist">
-        <div className="k-label border-b border-line px-5 py-3">Checklist</div>
-        <ul className="divide-y divide-line">
-          {(result ? checks : EXPECTED.map((name) => ({ name, ok: false, detail: null }))).map((c, i) => {
-            const state = !result ? (verify.isPending ? "running" : "pending") : i < shown ? (c.ok ? "ok" : "fail") : "running";
-            return (
-              <motion.li key={`${c.name}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="flex gap-4 px-5 py-3">
-                <span className={cn("w-12 shrink-0 font-mono text-13", state === "ok" ? "text-pass" : state === "fail" ? "text-block" : "text-text-3")}>
-                  {state === "ok" ? "pass" : state === "fail" ? "fail" : state === "running" ? "…" : "—"}
+          {live ? (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="relative isolate overflow-hidden rounded-panel border border-pass/40 bg-pass/[0.06] p-6 md:p-8">
+              <div aria-hidden className="k-grid-bg pointer-events-none absolute inset-0 -z-10 opacity-60" />
+              <p className="flex items-center gap-4 font-mono text-64 font-medium leading-none tracking-[-0.04em] text-pass">
+                <span className="relative flex size-4">
+                  <span aria-hidden className="absolute inset-0 animate-k-ping rounded-full bg-pass" />
+                  <span aria-hidden className="relative block size-4 rounded-full bg-pass" />
                 </span>
-                <div className="min-w-0">
-                  <p className={cn("text-15", state === "fail" ? "text-text" : "text-text-2")}>{c.name}</p>
-                  {state === "ok" && c.detail ? <p className="mt-0.5 truncate font-mono text-11 text-text-3">{c.detail}</p> : null}
-                  {state === "fail" ? <p className="mt-1 font-mono text-13 text-block">fix: {c.detail ?? "see the deploy script output"}</p> : null}
-                </div>
-              </motion.li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {live ? (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-panel border border-pass/40 bg-pass/5 p-8">
-          <p className="font-mono text-64 font-medium leading-none text-pass">LIVE</p>
-          <p className="mt-3 text-15 text-text-2">
-            {p.name} is guarded on {chainName(p.chainId)}. The monitor and attestor are subscribed.
-          </p>
-          <ButtonLink href={`/p/${id}`} className="mt-6" size="lg">
-            Open dashboard →
-          </ButtonLink>
-        </motion.div>
-      ) : null}
-      {failed ? (
-        <div role="alert" className="mt-8 rounded-panel border border-block/40 bg-block/5 p-6">
-          <p className="font-mono text-15 text-block">not live · {checks.filter((c) => !c.ok).length} check(s) failed</p>
-          <p className="mt-2 text-15 text-text-2">Apply the fixes above, redeploy if needed, then verify again.</p>
-          <ButtonLink href={`/p/${id}/integrate`} variant="secondary" className="mt-4">
-            ← Back to Integrate
-          </ButtonLink>
+                LIVE
+              </p>
+              <p className="mt-5 text-17 text-text">
+                {p.name} is guarded on {chainName(p.chainId)}.
+              </p>
+              <p className="mt-1 text-15 text-text-2">The monitor and the attestor are subscribed.</p>
+              <ButtonLink href={`/p/${id}`} className="mt-6 w-full" size="lg">
+                Open dashboard
+                <ArrowRight />
+              </ButtonLink>
+            </motion.div>
+          ) : null}
+          {failed ? (
+            <div role="alert" className="rounded-panel border border-block/40 bg-block/[0.06] p-5 md:p-6">
+              <span className="k-tag k-tag-block">not live</span>
+              <p className="mt-4 text-22 font-medium text-text">
+                {checks.filter((c) => !c.ok).length} check{checks.filter((c) => !c.ok).length === 1 ? "" : "s"} failed
+              </p>
+              <p className="mt-1.5 text-15 text-text-2">Each failed check lists its fix. Apply them, redeploy if needed, then verify again.</p>
+              <ButtonLink href={`/p/${id}/integrate`} variant="secondary" className="mt-5">
+                <ArrowRight className="rotate-180" />
+                Back to Integrate
+              </ButtonLink>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+
+        <section className="overflow-hidden rounded-panel border border-line-2 bg-surface lg:col-span-7" aria-live="polite" aria-label="Verification checklist">
+          <div className="k-bar">
+            <span>On-chain checklist</span>
+            <span className="k-tnum">{result ? `${passed}/${total} passed` : verify.isPending ? "reading chain…" : `${total} checks`}</span>
+          </div>
+          <div aria-hidden className="h-0.5 bg-line">
+            <div className={cn("h-full transition-[width] duration-300 ease-k", failed ? "bg-block" : "bg-pass")} style={{ width: result ? `${(shown / Math.max(1, total)) * 100}%` : "0%" }} />
+          </div>
+          <ul>
+            {(result ? checks : EXPECTED.map((name) => ({ name, ok: false, detail: null }))).map((c, i) => {
+              const state = !result ? (verify.isPending ? "running" : "pending") : i < shown ? (c.ok ? "ok" : "fail") : "running";
+              return (
+                <motion.li key={`${c.name}-${i}`} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="flex gap-4 border-b border-line px-5 py-4 last:border-b-0">
+                  <span
+                    className={cn(
+                      "mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border",
+                      state === "ok" ? "border-pass/40 bg-pass/10 text-pass" : state === "fail" ? "border-block/40 bg-block/10 text-block" : state === "running" ? "border-line-2 text-text-2" : "border-line-2 text-text-3",
+                    )}
+                  >
+                    {state === "ok" ? <Check className="size-3.5" /> : state === "fail" ? <Cross className="size-3.5" /> : state === "running" ? <Spinner className="size-3.5" /> : <span className="k-tnum font-mono text-11">{i + 1}</span>}
+                    <span className="sr-only">{state === "ok" ? "passed" : state === "fail" ? "failed" : state === "running" ? "checking" : "pending"}</span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("text-15 first-letter:uppercase", state === "pending" ? "text-text-2" : "text-text")}>{c.name}</p>
+                    {state === "ok" && c.detail ? <p className="mt-1 truncate font-mono text-11 text-text-3">{c.detail}</p> : null}
+                    {state === "fail" ? (
+                      <p className="mt-2 rounded-ctl border border-line bg-surface-2 px-3 py-2 font-mono text-13 text-text-2">
+                        <span className="mr-2 text-block">fix</span>
+                        {c.detail ?? "see the deploy script output"}
+                      </p>
+                    ) : null}
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ul>
+        </section>
+      </div>
     </>,
   );
 }

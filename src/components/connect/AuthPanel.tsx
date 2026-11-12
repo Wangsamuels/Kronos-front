@@ -10,6 +10,7 @@ import { short } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { Check, GitHubMark, Wallet } from "@/components/ui/Icons";
 
 /**
  * Auth, asked only here and only when needed: GitHub (OAuth + App install on the repo, needed for
@@ -95,11 +96,19 @@ export function AuthPanel({ chainId }: { chainId: number }) {
   const walletDone = !!(u?.walletAddress || u?.nearAccount);
 
   return (
-    <div className="k-panel divide-y divide-line">
-      <Row n="a" title="GitHub" done={ghDone && appDone} doneText={u?.githubLogin ? `@${u.githubLogin}${appDone ? " · app installed" : ""}` : undefined}>
+    <div className="overflow-hidden rounded-panel border border-line-2 bg-surface">
+      <Row
+        icon={<GitHubMark />}
+        title="GitHub"
+        note="required"
+        done={ghDone && appDone}
+        doneText={u?.githubLogin ? `@${u.githubLogin}${appDone ? " · app installed" : ""}` : undefined}
+        help="The GitHub App reads the repo for analysis and opens the integration pull request. Nothing else."
+      >
         {!signedIn || !ghDone ? (
           <div className="flex flex-wrap gap-2">
-            <Button onClick={github} busy={dev.isPending} variant="secondary">
+            <Button onClick={github} busy={dev.isPending}>
+              <GitHubMark />
               Continue with GitHub
             </Button>
             {meta.data?.devLogin && !USE_MOCKS ? (
@@ -109,34 +118,42 @@ export function AuthPanel({ chainId }: { chainId: number }) {
             ) : null}
           </div>
         ) : !appDone ? (
-          <Button variant="secondary" onClick={installApp}>
+          <Button onClick={installApp}>
+            <GitHubMark />
             Install the Kronos GitHub App on this repo
           </Button>
         ) : null}
-        <p className="mt-2 text-13 text-text-3">The GitHub App reads the repo for analysis and opens the integration PR. Nothing else.</p>
       </Row>
-      <Row n="b" title="Prove you control the protocol" done={walletDone} doneText={u?.walletAddress ? short(u.walletAddress) : u?.nearAccount ?? undefined} optional>
+      <Row
+        icon={<Wallet />}
+        title="Prove you control the protocol"
+        note="recommended"
+        done={walletDone}
+        doneText={u?.walletAddress ? short(u.walletAddress) : u?.nearAccount ?? undefined}
+        help="A signature only (SIWE or NEP-413). It never moves funds, and you can add it any time before going live."
+        dim={!signedIn}
+      >
         {!walletDone ? (
           <div className="flex flex-wrap gap-2">
             {connectors.map((c) => (
-              <Button key={c.id} variant="secondary" size="sm" disabled={!signedIn} busy={walletBusy === c.id} onClick={() => signEvm(c.id)}>
+              <Button key={c.id} variant="secondary" disabled={!signedIn} busy={walletBusy === c.id} onClick={() => signEvm(c.id)}>
                 EVM · {c.name}
               </Button>
             ))}
-            <Button variant="secondary" size="sm" disabled={!signedIn} busy={walletBusy === "meteor-wallet"} onClick={() => signNear("meteor-wallet")}>
+            <Button variant="secondary" disabled={!signedIn} busy={walletBusy === "meteor-wallet"} onClick={() => signNear("meteor-wallet")}>
               NEAR · Meteor
             </Button>
-            <Button variant="secondary" size="sm" disabled={!signedIn} busy={walletBusy === "my-near-wallet"} onClick={() => signNear("my-near-wallet")}>
+            <Button variant="secondary" disabled={!signedIn} busy={walletBusy === "my-near-wallet"} onClick={() => signNear("my-near-wallet")}>
               NEAR · MyNearWallet
             </Button>
           </div>
         ) : null}
-        <p className="mt-2 text-13 text-text-3">A signature only (SIWE or NEP-413). It never moves funds. You can add it before going live.</p>
       </Row>
       {signedIn ? (
-        <div className="flex justify-end px-5 py-2">
-          <button className="font-mono text-11 text-text-3 hover:text-text" onClick={() => void logout().then(() => qc.clear())}>
-            sign out
+        <div className="flex items-center justify-between border-t border-line bg-surface-2/50 px-5 py-2.5 text-13 text-text-3">
+          <span>Signed in{u?.githubLogin ? ` as @${u.githubLogin}` : ""}</span>
+          <button className="rounded-ctl px-1 text-text-2 underline decoration-line-2 underline-offset-4 transition-colors duration-k hover:text-text" onClick={() => void logout().then(() => qc.clear())}>
+            Sign out
           </button>
         </div>
       ) : null}
@@ -144,18 +161,18 @@ export function AuthPanel({ chainId }: { chainId: number }) {
   );
 }
 
-function Row({ n, title, done, doneText, optional, children }: { n: string; title: string; done: boolean; doneText?: string; optional?: boolean; children: React.ReactNode }) {
+function Row({ icon, title, note, done, doneText, help, dim, children }: { icon: React.ReactNode; title: string; note: string; done: boolean; doneText?: string; help: string; dim?: boolean; children: React.ReactNode }) {
   return (
-    <div className="p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-15 text-text">
-          <span className="mr-2 font-mono text-13 text-text-3">{n}</span>
-          {title}
-          {optional ? <span className="ml-2 font-mono text-11 text-text-3">recommended</span> : null}
-        </p>
-        <span className={cn("font-mono text-13", done ? "text-pass" : "text-text-3")}>{done ? `✓ ${doneText ?? "done"}` : "not yet"}</span>
+    <div className="grid grid-cols-[2.25rem_1fr] gap-x-4 border-b border-line p-5 last:border-b-0">
+      <span className={cn("grid size-9 place-items-center rounded-ctl border", done ? "border-pass/30 bg-pass/10 text-pass" : "border-line-2 bg-surface-2 text-text-2")}>{done ? <Check /> : icon}</span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <p className={cn("text-17 font-medium", dim && !done ? "text-text-2" : "text-text")}>{title}</p>
+          {done ? <span className="truncate font-mono text-13 text-pass">{doneText ?? "done"}</span> : <span className="font-mono text-11 uppercase tracking-[0.06em] text-text-3">{note}</span>}
+        </div>
+        <p className="mt-1 text-13 text-text-3">{help}</p>
+        {children ? <div className="mt-4 empty:hidden">{children}</div> : null}
       </div>
-      {children}
     </div>
   );
 }

@@ -16,8 +16,8 @@ export function OnboardingShell({ step, protocolId, children, wide }: { step: St
         right={protocol ? <ProtocolStatusPill status={protocol.status} /> : null}
       />
       <StepRail current={step} protocolId={protocolId} reached={reachedStep(protocol?.status, run.data?.status)} />
-      <main id="main" className={wide ? "k-container py-10" : "mx-auto w-full max-w-[760px] px-5 py-10 md:px-8"}>
-        {children}
+      <main id="main" className="k-container pb-24 pt-10 md:pt-14">
+        {wide ? children : <div className="max-w-[760px]">{children}</div>}
       </main>
     </div>
   );

@@ -5,8 +5,9 @@ import { USE_MOCKS } from "@/lib/env";
 export function MockBadge() {
   if (!USE_MOCKS) return null;
   return (
-    <div className="pointer-events-none fixed bottom-3 left-3 z-40 rounded-ctl border border-line bg-surface px-2 py-1 font-mono text-11 text-text-3">
-      mock api · NEXT_PUBLIC_API_URL empty
+    <div className="pointer-events-none fixed bottom-3 left-3 z-40 flex h-6 items-center gap-2 rounded-full border border-line-2 bg-surface/90 px-2.5 font-mono text-[10px] uppercase tracking-[0.06em] text-text-3 backdrop-blur">
+      <span aria-hidden className="block size-1.5 rounded-full bg-queue" />
+      mock api
     </div>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
-import { SectionLabel } from "@/components/ui/Section";
+import { Eyebrow, PageHead } from "@/components/ui/Page";
 import { GITHUB_URL } from "@/lib/links";
 
 export const metadata: Metadata = { title: "Docs" };
@@ -23,32 +23,38 @@ export default function Docs() {
   return (
     <div data-theme="light" className="min-h-dvh bg-bg text-text">
       <SiteNav />
-      <main id="main" className="k-container grid gap-10 py-16 lg:grid-cols-12">
-        <nav aria-label="Docs" className="lg:col-span-3">
-          <SectionLabel>Docs</SectionLabel>
-          <ul className="mt-4 grid gap-2 text-15">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
-                <a href={`#${s.id}`} className="text-text-2 hover:text-text">
-                  {s.title}
-                </a>
-              </li>
+      <main id="main" className="k-container pb-24 pt-12 md:pt-16">
+        <PageHead eyebrow={<Eyebrow>Docs</Eyebrow>} title="Integrating Kronos" lede="How the guard works, how to merge it, and exactly where its coverage ends." />
+        <div className="mt-12 grid gap-10 border-t border-line pt-10 lg:grid-cols-12">
+          <nav aria-label="Docs" className="lg:col-span-3">
+            <div className="lg:sticky lg:top-24">
+              <p className="k-label">On this page</p>
+              <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-0.5 lg:grid lg:gap-0">
+                {SECTIONS.map((s, i) => (
+                  <li key={s.id}>
+                    <a href={`#${s.id}`} className="group flex min-h-9 items-center gap-3 text-15 text-text-2 transition-colors duration-k hover:text-text">
+                      <span className="k-tnum hidden font-mono text-11 text-text-3 lg:inline">{String(i + 1).padStart(2, "0")}</span>
+                      {s.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </nav>
+          <div className="lg:col-span-8 lg:col-start-5">
+            {SECTIONS.map((s, i) => (
+              <section key={s.id} id={s.id} className="scroll-mt-24 border-t border-line py-9 first:border-t-0 first:pt-0">
+                <p className="k-tnum font-mono text-11 text-text-3">{String(i + 1).padStart(2, "0")}</p>
+                <h2 className="mt-2 text-[28px] font-medium leading-tight tracking-[-0.02em]">{s.title}</h2>
+                <p className="mt-4 max-w-[42rem] text-17 leading-[1.65] text-text-2">{s.body}</p>
+                {s.id === "source" ? (
+                  <Link href={GITHUB_URL} className="k-link mt-4 inline-block font-mono text-13">
+                    {GITHUB_URL.startsWith("http") ? GITHUB_URL : "GitHub link coming with the public repo"}
+                  </Link>
+                ) : null}
+              </section>
             ))}
-          </ul>
-        </nav>
-        <div className="grid gap-10 lg:col-span-8">
-          <h1 className="text-44 font-medium">Integrating Kronos</h1>
-          {SECTIONS.map((s) => (
-            <section key={s.id} id={s.id} className="scroll-mt-20 border-t border-line pt-6">
-              <h2 className="text-22 font-medium">{s.title}</h2>
-              <p className="mt-3 max-w-2xl text-17 text-text-2">{s.body}</p>
-              {s.id === "source" ? (
-                <Link href={GITHUB_URL} className="mt-3 inline-block font-mono text-13 underline">
-                  {GITHUB_URL.startsWith("http") ? GITHUB_URL : "GitHub link coming with the public repo"}
-                </Link>
-              ) : null}
-            </section>
-          ))}
+          </div>
         </div>
       </main>
       <SiteFooter />
