@@ -11,12 +11,13 @@ export const dynamic = "force-static";
 const SECTIONS = [
   { id: "quickstart", title: "Quickstart", body: "Paste the repo on /connect, sign in with GitHub, start the analysis, approve the review, merge the PR, deploy with the generated forge script, then verify the guard address. The protocol goes live when every on-chain check passes." },
   { id: "guard", title: "The guard modifier", body: "guarded(kind, intent, sig) runs pre-checks (intent signature, nonce, deadline, bounds, attestation freshness, probation), your function body, then post-checks (health, solvency, share price, oracle vs 30m TWAP, caps). Above-threshold outflow is queued, not reverted." },
-  { id: "tiers", title: "Admin tiers", body: "Tier 0 instant (tighten only), Tier 1 48 hours, Tier 2 7 days, Tier 3 14 days plus an independent co-sign. The timelock is owned by the guard, not governance. Guardians can cancel, never execute." },
+  { id: "tiers", title: "Admin tiers", body: "Risky admin changes wait in public before they can run: Tier 0 instant (tighten only), Tier 1 48 hours, Tier 2 7 days, Tier 3 14 days plus an independent co-sign. The waiting queue (a timelock contract) is owned by the guard, not governance. Guardians can cancel, never execute." },
+  { id: "near", title: "The monitor and NEAR", body: "The monitor acts through one NEAR function-call key limited to the registry’s tighten method. For EVM chains, the registry builds the outflow tighten itself and NEAR’s MPC network signs it (Chain Signatures), so Kronos holds no EVM key. Deploy the guard with the protocol’s Chain Signatures address as MONITOR_ADDRESS; the Verify step and the dashboard show whether each chain uses it. Chain Signatures covers outflow tightens only. Everything runs on testnet: Aurora testnet, Base Sepolia and NEAR testnet." },
   { id: "attack-library", title: "Attack library", body: "Oracle pump, donation share inflation, rounding loop, reentrancy, fake collateral listing, split withdrawals, admin oracle swap and intent tampering are replayed on an anvil fork for every package. The test suite ships in test/kronos/." },
   { id: "sdk", title: "@kronos/sdk", body: "Builds and signs EIP-712 intents in your frontend: new Kronos({ chainId, guard }), then kronos.borrow({...}) and kronos.submit(intent, walletClient)." },
   { id: "limits", title: "What Kronos doesn’t stop", body: "Phishing signatures, stolen exchange or wallet keys, chain-level bugs, and bugs in the invariants themselves." },
   { id: "source", title: "Source", body: "The integration docs live with the backend and contracts repository." },
-  { id: "contact", title: "Contact", body: "Design-partner onboarding is open for lending protocols on Base Sepolia and Aurora testnet." },
+  { id: "contact", title: "Contact", body: "Design-partner onboarding is open for lending protocols on Aurora testnet and Base Sepolia." },
 ];
 
 export default function Docs() {

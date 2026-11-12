@@ -7,11 +7,13 @@ import { StatusPill } from "@/components/StatusPill";
 import { cn } from "@/lib/cn";
 import { Stepper } from "./Stepper";
 import { Decide } from "./Decide";
+import { modelName, type LlmSummary } from "@/lib/llm";
 import { Chevron } from "@/components/ui/Icons";
 
 /** Rule text, Solidity (Shiki, collapsible), param controls, evidence, approve/reject. */
 export function InvariantCard({
   inv,
+  llm,
   highlight,
   locked,
   busy,
@@ -19,6 +21,8 @@ export function InvariantCard({
   onSaveParams,
 }: {
   inv: Invariant;
+  /** Who drafted this run, so "drafter A / B" can be shown as the model it was. */
+  llm?: LlmSummary | null;
   /** The backend refused to approve the run because this one is undecided. */
   highlight?: boolean;
   locked: boolean;
@@ -41,7 +45,7 @@ export function InvariantCard({
       {needs ? (
         <p className="flex items-center gap-2.5 border-b border-queue/30 bg-queue/[0.07] px-5 py-2.5 text-13 text-queue">
           <span aria-hidden className="block size-1.5 rounded-full bg-queue" />
-          The drafters disagreed on this rule. It needs your decision before the guard can be built.
+          The models disagreed. You decide. This rule needs a decision before the guard can be built.
         </p>
       ) : null}
       <header className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5">
@@ -76,8 +80,16 @@ export function InvariantCard({
               </div>
             ) : null}
             <div className="grid grid-cols-[5rem_1fr] gap-3">
-              <dt className="font-mono text-11 uppercase leading-5 tracking-[0.06em] text-text-3">drafters</dt>
-              <dd className={agree ? "text-text-2" : "text-queue"}>{agree ? "A and B agree" : `only ${inv.drafters.join(", ") || "one drafter"}${ev.disagreement ? ` · ${ev.disagreement}` : ""}`}</dd>
+              <dt className="font-mono text-11 uppercase leading-5 tracking-[0.06em] text-text-3">drafted by</dt>
+              <dd className={agree ? "text-text-2" : "text-queue"}>
+                {agree ? "both models agree" : `only ${inv.drafters.map((d) => `model ${/b$/i.test(d) ? "B" : "A"}`).join(", ") || "one model"}${ev.disagreement ? ` · ${ev.disagreement}` : ""}`}
+                {llm && !llm.allFallback ? (
+                  <span className="mt-1 block font-mono text-11 text-text-3">
+                    A = {modelName(llm.drafterA)} · B = {modelName(llm.drafterB)}
+                    {llm.enclave ? " · NEAR AI enclave" : ""}
+                  </span>
+                ) : null}
+              </dd>
             </div>
             {ev.rationale ? (
               <div className="grid grid-cols-[5rem_1fr] gap-3">

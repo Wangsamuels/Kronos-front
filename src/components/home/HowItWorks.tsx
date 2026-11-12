@@ -6,9 +6,9 @@ import { cn } from "@/lib/cn";
 
 const STEPS = [
   { n: "01", title: "Link", body: "Paste the GitHub repo. The code is the source of truth; your website only adds hints, like deployed addresses." },
-  { n: "02", title: "Analyze", body: "Agents map every entry point and draft the invariants. A red team attacks the draft on a fork. The compiler and the tests decide what holds." },
-  { n: "03", title: "Review", body: "Your team approves every rule, bound and admin tier. Anything the two drafters disagreed on is pinned to the top." },
-  { n: "04", title: "Merge", body: "One pull request adds the guard, the modifiers, timelock routing, the attack tests and a deploy script." },
+  { n: "02", title: "Analyze", body: "Two independent AI models, running in a hardware enclave on NEAR AI Cloud, map every entry point and draft the invariants. A red team attacks the draft on a fork. The compiler and the tests decide what holds." },
+  { n: "03", title: "Review", body: "Your team approves every rule, bound and admin tier. Where the two models disagreed, the rule is pinned to the top and you decide." },
+  { n: "04", title: "Merge", body: "One pull request adds the guard, the modifiers, the waiting period for risky admin changes, the attack tests and a deploy script." },
 ];
 const DWELL = 6000;
 
@@ -115,7 +115,7 @@ function ArtifactInput() {
       <div className="grid gap-2 p-5 font-mono text-13 sm:p-6">
         <div className="rounded-ctl border border-line bg-surface-2 px-3 py-3"><span className="k-label mr-4">website</span>https://minilend.xyz</div>
         <div className="rounded-ctl border border-line bg-surface-2 px-3 py-3"><span className="k-label mr-4">repo</span>github.com/minilend/protocol</div>
-        <div className="rounded-ctl border border-line bg-surface-2 px-3 py-3"><span className="k-label mr-4">chain</span>Base Sepolia</div>
+        <div className="rounded-ctl border border-line bg-surface-2 px-3 py-3"><span className="k-label mr-4">chain</span>Aurora testnet</div>
         <p className="mt-3 flex items-start gap-2 text-text-2"><span aria-hidden className="mt-1.5 block size-1.5 shrink-0 rounded-full bg-pass" />detected MiniLend.sol, MiniLendCore.sol · 2 addresses from deploy files</p>
       </div>
     </div>
@@ -127,7 +127,7 @@ function ArtifactLog() {
     ["ingest", "Classified as lending (97%): borrow/repay/liquidate entry points"],
     ["map", "User borrow: borrow(address,uint256)"],
     ["map", "Privileged setOracle: setOracle(address,address)"],
-    ["invariants", "Oracle sanity against the attested 30m TWAP — drafters disagree, flagged"],
+    ["invariants", "Oracle sanity against the attested 30m TWAP — the models disagreed, you decide"],
     ["verify", "BLOCKED: oracle pump (spot +41% vs TWAP) at checkOracle"],
     ["verify", "Fork replay: 200/200 pass, 0 false positives"],
   ];
@@ -138,7 +138,7 @@ function ArtifactLog() {
         {lines.map(([s, m], k) => (
           <li key={k} className="flex gap-4 border-b border-line/60 py-2.5 last:border-b-0">
             <span className="w-[5.5rem] shrink-0 text-11 uppercase leading-[1.65] tracking-[0.06em] text-text-3">{s}</span>
-            <span className={m!.startsWith("BLOCKED") ? "text-block" : m!.includes("flagged") ? "text-queue" : m!.includes("0 false positives") ? "text-pass" : "text-text-2"}>{m}</span>
+            <span className={m!.startsWith("BLOCKED") ? "text-block" : m!.includes("you decide") ? "text-queue" : m!.includes("0 false positives") ? "text-pass" : "text-text-2"}>{m}</span>
           </li>
         ))}
       </ul>
@@ -156,7 +156,7 @@ function ArtifactInvariant() {
         <div className="mt-4 flex flex-wrap items-center gap-3 font-mono text-13">
           <span className="text-text-3">oracleDeviationBps</span>
           <span className="rounded-ctl border border-line bg-surface-2 px-3 py-1.5">− 200 +</span>
-          <span className="text-queue">drafter A 200 · drafter B 300</span>
+          <span className="text-queue">model A 200 · model B 300</span>
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4 font-mono text-13">
           <span className="text-text-3">evidence</span>

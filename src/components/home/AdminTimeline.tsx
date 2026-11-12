@@ -48,7 +48,7 @@ export function AdminTimeline() {
       {/* the queue, on a 14-day ruler */}
       <div className="mt-6 rounded-panel border border-line-2 bg-surface">
         <div className="flex h-11 items-center justify-between border-b border-line px-5 font-mono text-11 uppercase tracking-[0.06em] text-text-3">
-          <span>Timelock queue · 1 pending</span>
+          <span>Public waiting queue · 1 pending</span>
           <span className="k-tnum">day {day.toFixed(1)}</span>
         </div>
         <div className="px-5 pb-2 pt-8">

@@ -12,7 +12,7 @@ import { AuthLink } from "./auth/AuthLink";
 const LINKS = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#the-guard", label: "The guard" },
-  { href: "/#coverage", label: "Coverage" },
+  { href: "/why-near", label: "Why NEAR" },
   { href: "/docs", label: "Docs" },
   { href: GITHUB_URL, label: "GitHub", external: GITHUB_URL.startsWith("http") },
 ];

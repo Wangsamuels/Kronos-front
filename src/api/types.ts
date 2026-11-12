@@ -30,6 +30,7 @@ export type Settings = Json<"/v1/protocols/{id}/settings", "get">;
 export type Me = Json<"/v1/me", "get">;
 export type Meta = Json<"/v1/meta", "get">;
 export type Session = Json<"/v1/auth/refresh", "post">;
+export type Monitor = Json<"/v1/protocols/{id}/monitor", "get">;
 export type Providers = Json<"/v1/auth/providers", "get">;
 export type Attestation = Overview["attestations"][number];
 export type ChainDeployment = Overview["deployments"][number];
@@ -79,4 +80,13 @@ export interface InvariantEvidence {
   disagreement?: string | null;
   round?: number;
   blockedBy?: string[];
+}
+
+/** `llm` on a run (left as unknown in the OpenAPI file): who drafted the rules and where it ran. */
+export interface RunLlm {
+  provider?: string;
+  /** [mapper, drafter A, drafter B] */
+  models?: string[];
+  chatIds?: string[];
+  tee?: { tee?: boolean; provider?: string; attestation?: { signingAddress?: string; modelAttestations?: number } | null } | null;
 }

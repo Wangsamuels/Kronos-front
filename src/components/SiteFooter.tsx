@@ -10,6 +10,7 @@ const COLS = [
       { href: "/#how-it-works", label: "How it works" },
       { href: "/#the-guard", label: "The guard" },
       { href: "/#coverage", label: "Coverage" },
+      { href: "/why-near", label: "Why NEAR" },
     ],
   },
   {
@@ -37,7 +38,7 @@ export function SiteFooter() {
         <div className="grid gap-10 py-14 md:grid-cols-12">
           <div className="md:col-span-5">
             <Wordmark />
-            <p className="mt-4 max-w-xs text-15 text-text-2">An on-chain guard for DeFi protocols. Every action answers to your invariants, in the same transaction.</p>
+            <p className="mt-4 max-w-xs text-15 text-text-2">A security layer for lending protocols. Drafted in a NEAR AI enclave, enforced on Aurora, with a NEAR key that can only tighten.</p>
           </div>
           <nav aria-label="Footer" className="grid grid-cols-2 gap-8 min-[520px]:grid-cols-3 md:col-span-7">
             {COLS.map((c) => (
@@ -63,10 +64,10 @@ export function SiteFooter() {
           </nav>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-2 border-t border-line py-6 font-mono text-11 uppercase tracking-[0.06em] text-text-3">
-          <span>© 2026 Kronos · Built on NEAR</span>
+          <span>© 2026 Kronos · Built on NEAR: NEAR AI Cloud, Aurora, Chain Signatures</span>
           <span className="flex items-center gap-2">
             <span aria-hidden className="block size-1.5 rounded-full bg-pass" />
-            Lending · live MVP on testnet
+            Lending · live on testnet only
           </span>
         </div>
       </div>

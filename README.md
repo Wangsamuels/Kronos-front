@@ -21,7 +21,7 @@ Leave `NEXT_PUBLIC_API_URL` empty.
 pnpm dev            # http://localhost:3000
 ```
 
-MSW intercepts every `/v1/*` call. The handlers are typed from the same `contracts/openapi.json`, and a scripted SSE run plays the full analysis. Mock state lives in `localStorage` (`kronos.mock.v4`); clear it to start over. A small "mock api" badge shows in the corner.
+MSW intercepts every `/v1/*` call. The handlers are typed from the same `contracts/openapi.json`, and a scripted SSE run plays the full analysis. Mock state lives in `localStorage` (`kronos.mock.v5`); clear it to start over. A small "mock api" badge shows in the corner.
 
 Try these:
 - **Connect → "or use the MiniLend sample"** (`sample://minilend`) → Continue with GitHub (mock) → Start analysis.

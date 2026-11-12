@@ -9,6 +9,8 @@ const TOKENS: Record<string, { symbol: string; decimals: number }> = {
   "0x8326f1ef7456ed27ff6d7ba6635231f873cf1a8e": { symbol: "kUSDC", decimals: 6 },
   "0x2355bd309f5435abda697d1e2c737422a28a988b": { symbol: "kWETH", decimals: 18 },
   "0xdcceccd2955211ae82ab9a21a496d3da6320c7e2": { symbol: "THIN", decimals: 18 },
+  // MiniLend demo after the Chain Signatures redeploy
+  "0x3afa5f034aa297a019c61f03bb62cde0d5a9fbeb": { symbol: "kUSDC", decimals: 6 },
   // Base Sepolia
   "0x036cbd53842c5426634e7929541ec2318f3dcf7e": { symbol: "USDC", decimals: 6 },
   "0x4200000000000000000000000000000000000006": { symbol: "WETH", decimals: 18 },
@@ -48,7 +50,8 @@ export function formatAmount(raw: string | null | undefined, asset?: string | nu
   if (!info || !/^\d+$/.test(raw)) {
     const n = Number(raw);
     const v = Number.isFinite(n) ? n.toLocaleString("en-US") : raw;
-    return asset ? `${v} ${tokenSymbol(asset)}` : v;
+    // Unknown token: the number is in the token's smallest unit, so say so rather than imply whole tokens.
+    return asset ? `${v} base units of ${tokenSymbol(asset)}` : v;
   }
   const n = Number(fromUnits(raw, info.decimals));
   return `${n.toLocaleString("en-US", { maximumFractionDigits: n >= 1000 ? 0 : 4 })} ${info.symbol}`;

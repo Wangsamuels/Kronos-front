@@ -114,6 +114,16 @@ export const useAdminQueue = (id: string) =>
     refetchInterval: 15_000,
   });
 
+/** How the monitor can act on this protocol: NEAR registry + tighten-only key, and the Chain Signatures address per chain. */
+export const useMonitor = (id: string, enabled = true) =>
+  useQuery({
+    queryKey: ["monitor", id] as const,
+    queryFn: () => unwrap(api.GET("/v1/protocols/{id}/monitor", { params: { path: { id } } })),
+    enabled: !!id && enabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+
 export const useSettings = (id: string) =>
   useQuery({
     queryKey: qk.settings(id),
@@ -211,6 +221,7 @@ export function useVerifyDeployment(protocolId: string) {
       unwrap(api.POST("/v1/protocols/{id}/deployments", { params: { path: { id: protocolId } }, body })),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: qk.deployments(protocolId) });
+      void qc.invalidateQueries({ queryKey: ["monitor", protocolId] });
       void qc.invalidateQueries({ queryKey: qk.protocol(protocolId) });
       void qc.invalidateQueries({ queryKey: qk.protocols });
     },

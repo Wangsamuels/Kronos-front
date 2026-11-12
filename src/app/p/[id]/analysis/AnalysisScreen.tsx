@@ -9,7 +9,8 @@ import { StageRail } from "@/components/TraceRail";
 import { Waitlist } from "@/components/connect/Waitlist";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { PageHead, StepEyebrow } from "@/components/ui/Page";
-import { ArrowRight, Refresh } from "@/components/ui/Icons";
+import { ArrowRight, Lock, Refresh } from "@/components/ui/Icons";
+import { modelName, summarizeLlm } from "@/lib/llm";
 import { cn } from "@/lib/cn";
 import { ErrorState, LoadingBlock } from "@/components/ui/States";
 import { deriveCounters, derivePhase, PIPELINE } from "@/components/analysis/derive";
@@ -47,6 +48,7 @@ export function AnalysisScreen({ id }: { id: string }) {
     }
     await qc.invalidateQueries({ queryKey: qk.protocol(id) });
   };
+  const llm = summarizeLlm(run.data?.llm);
   const runError = (run.data?.error ?? null) as { code?: string; message?: string } | null;
 
   const title =
@@ -63,13 +65,35 @@ export function AnalysisScreen({ id }: { id: string }) {
             ? "The run is finished. Check what the guard will enforce before anything ships."
             : phase === "failed"
               ? "The run stopped before it finished. The log shows where."
-              : "Agents are mapping entry points, drafting invariants and attacking them on a fork. You can leave and come back.";
+              : "Two models are mapping entry points and drafting invariants, then a red team attacks the draft on a fork. You approve every rule afterwards. You can leave and come back.";
 
   return (
     <OnboardingShell step="analysis" protocolId={id} wide>
       <PageHead eyebrow={<StepEyebrow n={2} label="Analyze" note={phase === "packaging" || phase === "packaged" ? "packaging" : undefined} />} title={title} lede={lede} />
 
-      <div className="mt-8 min-w-0 overflow-hidden rounded-panel border border-line-2 bg-surface px-4 pb-3 pt-4 md:px-5">
+      {llm ? (
+        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+          {llm.enclave && !llm.allFallback ? (
+            <span className="k-tag k-tag-pass">
+              <Lock className="size-3" />
+              Ran in a NEAR AI enclave
+            </span>
+          ) : llm.enclave ? (
+            <span className="k-tag k-tag-idle">NEAR AI enclave attested · drafted by fallback rules</span>
+          ) : (
+            <span className="k-tag k-tag-idle">Drafted locally, outside an enclave</span>
+          )}
+          <p className="font-mono text-11 text-text-3">
+            <span className="uppercase tracking-[0.06em]">mapped by</span> <span className="text-text-2">{modelName(llm.mapper)}</span>
+            <span className="px-2">·</span>
+            <span className="uppercase tracking-[0.06em]">rules by</span> <span className="text-text-2">A {modelName(llm.drafterA)}</span>
+            <span className="px-1.5 text-text-3">+</span>
+            <span className="text-text-2">B {modelName(llm.drafterB)}</span>
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mt-5 min-w-0 overflow-hidden rounded-panel border border-line-2 bg-surface px-4 pb-3 pt-4 md:px-5">
         <StageRail stages={PIPELINE} current={phase === "packaged" ? undefined : phase === "review" || lastStage === "review" ? "package" : lastStage} waiting={phase === "review"} failed={phase === "failed" ? failedStage : undefined} done={phase === "packaged"} />
       </div>
 
@@ -198,7 +222,7 @@ export function AnalysisScreen({ id }: { id: string }) {
             <dl className="grid grid-cols-2">
               <Stat label="Contracts" value={counters.contracts} />
               <Stat label="Entry points" value={counters.entryUser + counters.entryPrivileged} sub={`${counters.entryUser} user · ${counters.entryPrivileged} privileged`} />
-              <Stat label="Invariants drafted" value={counters.invariants} sub={counters.flagged ? `${counters.flagged} flagged for review` : undefined} subTone="queue" />
+              <Stat label="Invariants drafted" value={counters.invariants} sub={counters.flagged ? `${counters.flagged} where the models disagreed` : undefined} subTone="queue" />
               <Stat label="Attacks blocked" value={counters.attacksBlocked} sub={`of ${counters.attacksTried} tried`} />
               <Stat label="Transactions replayed" value={counters.txReplayed} sub={counters.txReplayed ? `${counters.txPassed} passed` : undefined} wide />
             </dl>

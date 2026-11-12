@@ -9,6 +9,7 @@ import { LazyTrace } from "@/components/home/LazyTrace";
 import { ReplayStrip } from "@/components/home/ReplayStrip";
 import { HowItWorks } from "@/components/home/HowItWorks";
 import { HeroRain } from "@/components/home/HeroRain";
+import { NearLayers } from "@/components/home/NearLayers";
 import { GuardFlow } from "@/components/home/GuardFlow";
 import { AdminTimeline } from "@/components/home/AdminTimeline";
 import { CodeTabs, type CodeTab } from "@/components/code/CodeTabs";
@@ -47,7 +48,7 @@ const PROOF = [
   { value: "6/6", label: "attack replays stopped on a fork" },
   { value: "28", label: "Foundry tests in the guard suite" },
   { value: "30/30", label: "on-chain checks before a guard goes live" },
-  { value: "1 PR", label: "to integrate: guard, tests, deploy script" },
+  { value: "1 key", label: "on NEAR, tighten-only, for every chain" },
 ];
 
 const STOPS = [
@@ -103,7 +104,7 @@ export default async function Home() {
                   <span aria-hidden className="absolute inset-0 animate-k-ping rounded-full bg-pass" />
                   <span aria-hidden className="relative block size-1.5 rounded-full bg-pass" />
                 </span>
-                Live on Base Sepolia + Aurora testnet
+                Live on Aurora testnet + Base Sepolia
               </p>
               <h1 className="mt-7 max-w-[15ch] text-display font-medium text-text md:max-w-none">
                 Exploits revert.
@@ -113,13 +114,13 @@ export default async function Home() {
               <div className="mt-10 grid gap-12 lg:mt-14 lg:grid-cols-12 lg:gap-10">
                 <div className="lg:col-span-5">
                   <p className="max-w-[32rem] text-lede text-text-2">
-                    Kronos is an on-chain guard for lending protocols. It checks every action against your protocol’s own invariants, inside the same transaction. Users, attackers and your own admin keys all get the same treatment.
+                    Kronos is a security layer for lending protocols. AI in a hardware enclave on NEAR AI Cloud drafts the guard. Aurora enforces it on every transaction. A NEAR key that can only tighten handles emergencies on every chain.
                   </p>
                   <div className="mt-8 max-w-[32rem]">
                     <RepoInput variant="inline" submitLabel="Analyze repo" hint={sampleHint} />
                   </div>
                   <ul className="mt-8 grid max-w-[32rem] gap-2.5 text-15 text-text-2">
-                    {["Analysis runs in minutes", "Nothing ships until your team approves every rule", "You merge it as one pull request"].map((t) => (
+                    {["The AI drafts. Your team approves every rule", "You merge the guard as one pull request", "Testnet today: Aurora, Base Sepolia, NEAR"].map((t) => (
                       <li key={t} className="flex items-center gap-3">
                         <Check className="size-3.5 shrink-0 text-pass" />
                         {t}
@@ -147,10 +148,22 @@ export default async function Home() {
             </dl>
           </section>
 
-          {/* 2 — Attack ledger */}
-          <section className="k-section" aria-labelledby="replays">
+          {/* 2 — NEAR powers every layer */}
+          <section id="how-it-works" className="k-section scroll-mt-16" aria-labelledby="layers">
             <SectionHead
               n="01"
+              label="How it works"
+              id="layers"
+              title="Three layers. NEAR does the work in each one."
+              lede="An enclave to write the rules, a cheap chain to enforce them, and a key that cannot make things less safe to respond when something goes wrong."
+            />
+            <NearLayers />
+          </section>
+
+          {/* 3 — Attack ledger */}
+          <section className="k-section" aria-labelledby="replays">
+            <SectionHead
+              n="02"
               label="Attack ledger"
               id="replays"
               title="Six attack patterns from 2026. None of them moved funds."
@@ -160,8 +173,8 @@ export default async function Home() {
           </section>
 
           {/* 3 — How it works */}
-          <section id="how-it-works" className="k-section scroll-mt-16">
-            <SectionHead n="02" label="How it works" title="From a pasted repo to a live guard in four steps." lede="AI drafts the rules. Fork tests prove them. Your team signs off. Agents agreeing with each other counts for nothing; the compiler decides." />
+          <section id="onboarding" className="k-section scroll-mt-16">
+            <SectionHead n="03" label="Onboarding" title="From a pasted repo to a live guard in four steps." lede="AI drafts the rules. Fork tests prove them. Your team signs off. The AI never decides alone: models agreeing with each other counts for nothing, and the compiler has the last word." />
             <Reveal>
               <HowItWorks />
             </Reveal>
@@ -169,7 +182,7 @@ export default async function Home() {
 
           {/* 4 — The guard */}
           <section id="the-guard" className="k-section scroll-mt-16">
-            <SectionHead n="03" label="The guard" title="One modifier, two doors. Nobody skips the checks." lede="Users arrive with a signed intent. Admins arrive through the timelock. Both hit the same five stages, and the guard judges the resulting state, not the size of the transaction." />
+            <SectionHead n="04" label="The guard" title="One modifier, two doors. Nobody skips the checks." lede="Users arrive with a signed intent. Admins arrive through the timelock. Both hit the same five stages, and the guard judges the resulting state, not the size of the transaction." />
             <Reveal>
               <GuardFlow />
             </Reveal>
@@ -177,7 +190,7 @@ export default async function Home() {
 
           {/* 5 — Admin strategy */}
           <section className="k-section">
-            <SectionHead n="04" label="Admin keys" title="Safer is instant. Riskier has to wait." lede="Admins change settings and never move funds. Tightening applies immediately. Anything that adds risk sits in a public queue, where a guardian can cancel it and nobody can rush it." />
+            <SectionHead n="05" label="Admin keys" title="Safer is instant. Riskier has to wait." lede="Admins change settings and never move funds. Tightening applies immediately. Risky changes wait 2 to 14 days in public. Guardians can cancel, never execute." />
             <Reveal>
               <AdminTimeline />
             </Reveal>
@@ -185,7 +198,7 @@ export default async function Home() {
 
           {/* 6 — Coverage */}
           <section id="coverage" className="k-section scroll-mt-16">
-            <SectionHead n="05" label="Coverage" title="What it stops, and what it doesn’t." lede="A guard is one layer. Here is exactly where this one ends, so you know what still needs an audit." />
+            <SectionHead n="06" label="Coverage" title="What it stops, and what it doesn’t." lede="A guard is one layer. Here is exactly where this one ends, so you know what still needs an audit." />
             <Reveal className="grid gap-px overflow-hidden rounded-panel border border-line-2 bg-line lg:grid-cols-12">
               <div className="flex flex-col justify-between gap-10 bg-surface p-6 md:p-8 lg:col-span-4">
                 <p className="k-label">Share of 2026 losses in scope</p>
@@ -224,7 +237,7 @@ export default async function Home() {
 
           {/* Protocol coverage roadmap: multi-protocol, lending first */}
           <section className="k-section">
-            <SectionHead n="06" label="Protocol types" title="Lending ships first. The same guard model carries to the rest." lede="Not a lending protocol? Paste the repo anyway. We classify it and put you on the waitlist for your type." />
+            <SectionHead n="07" label="Protocol types" title="Lending ships first. The same guard model carries to the rest." lede="Not a lending protocol? Paste the repo anyway. We classify it and put you on the waitlist for your type." />
             <Reveal>
               <ul aria-label="Protocol types" className="border-b border-line">
                 {PROTOCOL_TYPES.map((p) => (
@@ -242,7 +255,7 @@ export default async function Home() {
 
           {/* 7 — For developers */}
           <section className="k-section">
-            <SectionHead n="07" label="Integration" title="A modifier, four lines of SDK, one deploy command." />
+            <SectionHead n="08" label="Integration" title="A modifier, four lines of SDK, one deploy command." />
             <Reveal className="grid gap-8 lg:grid-cols-12 lg:gap-10">
               <ol className="grid content-start lg:col-span-4">
                 {INTEGRATION_POINTS.map((p, i) => (

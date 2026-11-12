@@ -1,7 +1,7 @@
 "use client";
 import * as DM from "@radix-ui/react-dropdown-menu";
 import type { Entrypoint, Tier } from "@/api/types";
-import { TIER_LABEL, duration, tierDelay } from "@/lib/format";
+import { TIER_LABEL, TIER_SHORT, duration, tierDelay } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { Tip } from "@/components/ui/Tip";
 import { Check, Chevron } from "@/components/ui/Icons";
@@ -11,8 +11,8 @@ export function TierTable({ tiers, entries, locked, onChange }: { tiers: Tier[];
   return (
     <div className="overflow-hidden rounded-panel border border-line-2 bg-surface">
       <div className="hidden min-h-11 grid-cols-12 items-center gap-4 border-b border-line px-5 md:grid">
-        {["Function", "Tier", "Delay", "Source"].map((h, i) => (
-          <span key={h} className={cn("k-label", ["col-span-5", "col-span-3", "col-span-2", "col-span-2"][i])}>
+        {["Function", "Tier", "Waits in public", "Set by"].map((h, i) => (
+          <span key={h} className={cn("k-label", ["col-span-4", "col-span-3", "col-span-2", "col-span-3"][i])}>
             {h}
           </span>
         ))}
@@ -23,7 +23,7 @@ export function TierTable({ tiers, entries, locked, onChange }: { tiers: Tier[];
           const rule = t.source === "rule";
           return (
             <li key={t.id} className="grid gap-3 border-b border-line px-5 py-4 transition-colors duration-k last:border-b-0 hover:bg-surface-2/40 md:grid-cols-12 md:items-center md:gap-4">
-              <div className="min-w-0 md:col-span-5">
+              <div className="min-w-0 md:col-span-4">
                 <p className="truncate font-mono text-13 text-text">{e?.signature ?? t.entrypointId}</p>
                 <p className="mt-1 text-13 text-text-3">{t.rationale}</p>
               </div>
@@ -62,17 +62,17 @@ export function TierTable({ tiers, entries, locked, onChange }: { tiers: Tier[];
               </div>
               <span className={cn("k-tnum flex items-center gap-2 font-mono text-13 md:col-span-2", t.tier === 0 ? "text-pass" : "text-queue")}>
                 <span aria-hidden className="block size-1.5 rounded-full bg-current" />
-                {t.tier === 0 ? "instant" : duration(tierDelay(t.tier))}
+                {t.tier === 0 ? "no wait" : `${TIER_SHORT[t.tier] ?? duration(tierDelay(t.tier))}${t.tier === 3 ? " + co-sign" : ""}`}
               </span>
-              <span className="font-mono text-13 text-text-3 md:col-span-2">
+              <span className="font-mono text-13 text-text-3 md:col-span-3">
                 {rule ? (
                   <Tip content={`${t.rationale ?? "Hard rule"} Hard rules can only be made stricter.`}>
                     <span tabIndex={0} className="inline-flex items-center gap-1.5 text-text-2">
-                      <LockIcon /> rule
+                      <LockIcon /> hard rule · can only be raised
                     </span>
                   </Tip>
                 ) : (
-                  "agent"
+                  "AI draft"
                 )}
               </span>
             </li>

@@ -50,7 +50,7 @@ export const handlers = [
         { chainId: AURORA_TESTNET, name: "Aurora testnet" },
         { chainId: BASE_SEPOLIA, name: "Base Sepolia" },
       ],
-      integrations: { github: "mock", llm: "mock", prover: "signed attestations" },
+      integrations: { github: "mock", llm: "near-ai", chainSignatures: true, prover: "signed attestations" },
       devLogin: true,
       protocolTypes: [
         { type: "lending", available: true },
@@ -336,6 +336,23 @@ export const handlers = [
     const p = protocolOr404(params.id);
     if (!p) return err(404, "NOT_FOUND", "Protocol not found");
     return HttpResponse.json(overview(p) as never);
+  }),
+  http.get("/v1/protocols/{id}/monitor", ({ params, request }) => {
+    if (!userFrom(request)) return err(401, "UNAUTHENTICATED", "Sign in first");
+    const evmAddress = "0xEbBCE871786Aa2B45b437D90Ec7D1fA7853AEC9f";
+    const mine = db().deployments.filter((d) => d.protocolId === params.id);
+    const latest = [...new Map(mine.map((d) => [d.chainId, d] as const).reverse()).values()];
+    return HttpResponse.json({
+      near: { network: "testnet", registry: "kronos-registry.testnet", monitorAccount: "kronos-monitor.testnet", functionCallKey: true },
+      chainSignatures: { enabled: true, signer: "v1.signer-prod.testnet", path: `kronos/${params.id}`, evmAddress },
+      chains: latest.map((d, i) => ({
+        chainId: d.chainId,
+        guardAddress: d.guardAddress,
+        guardMonitor: evmAddress,
+        usesChainSignatures: true,
+        derivedAddressBalanceWei: i === 0 ? "3999810771999840" : "4990442340000000",
+      })),
+    });
   }),
   http.get("/v1/protocols/{id}/events", async ({ params, request }) => {
     await delay(LAT);

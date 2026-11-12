@@ -115,7 +115,7 @@ export function TraceRail({ traces = SCRIPTED_TRACES, stages = GUARD_STAGES as r
           Guard live
         </span>
         <span className="truncate font-mono text-11 text-text-3">
-          GuardedMiniLend<span className="hidden min-[420px]:inline"> · base-sepolia</span>
+          GuardedMiniLend<span className="hidden min-[420px]:inline"> · aurora-testnet</span>
         </span>
       </div>
 

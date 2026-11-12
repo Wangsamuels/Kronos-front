@@ -6,7 +6,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Field, PageHead, StepEyebrow } from "@/components/ui/Page";
 import { ArrowRight, Check, Cross, Spinner } from "@/components/ui/Icons";
 import { ErrorState, LoadingBlock } from "@/components/ui/States";
-import { useDeployments, useMeta, useProtocol, useVerifyDeployment } from "@/api/queries";
+import { useDeployments, useMeta, useMonitor, useProtocol, useVerifyDeployment } from "@/api/queries";
 import { ApiError, errorMessage } from "@/api/errors";
 import type { Deployment, VerifyCheck } from "@/api/types";
 import { ADDRESS_RE } from "@/lib/validate";
@@ -24,6 +24,7 @@ export function VerifyScreen({ id }: { id: string }) {
   const [result, setResult] = useState<Deployment | null>(null);
   const [shown, setShown] = useState(0);
   const meta = useMeta();
+  const monitor = useMonitor(id);
   const [chainId, setChainId] = useState<number | null>(null);
 
   // Auto-fill from a detected deployment (e.g. the merged PR's deploy).
@@ -58,6 +59,11 @@ export function VerifyScreen({ id }: { id: string }) {
   const p = protocol.data;
   const chain = chainId ?? p.chainId;
   const chainOptions = meta.data?.chains?.length ? meta.data.chains.map((c) => ({ id: c.chainId, name: chainName(c.chainId) })) : [{ id: p.chainId, name: chainName(p.chainId) }];
+  // Latest deployment per chain, joined with what the guard on that chain reports as its monitor.
+  const perChain = [...new Map((deployments.data ?? []).map((d) => [d.chainId, d] as const).reverse()).values()].map((d) => ({
+    d,
+    mc: monitor.data?.chains.find((c) => c.chainId === d.chainId),
+  }));
   const registered = new Set((deployments.data ?? []).filter((d) => d.verified).map((d) => d.chainId));
   const gErr = guard && !ADDRESS_RE.test(guard) ? "Not a 0x address" : null;
   const tErr = timelock && !ADDRESS_RE.test(timelock) ? "Not a 0x address" : null;
@@ -176,9 +182,43 @@ export function VerifyScreen({ id }: { id: string }) {
           ) : null}
         </div>
 
-        <section className="overflow-hidden rounded-panel border border-line-2 bg-surface lg:col-span-7" aria-live="polite" aria-label="Verification checklist">
+        <div className="grid content-start gap-6 lg:col-span-7">
+        {/* one result card per chain */}
+        {perChain.length ? (
+          <section aria-label="Registered chains" className="grid gap-3 min-[520px]:grid-cols-2">
+            {perChain.map(({ d, mc }) => (
+              <article key={d.id} className={cn("rounded-panel border bg-surface p-4", d.chainId === chain ? "border-text-3" : "border-line-2")}>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-17 font-medium text-text">{chainName(d.chainId)}</h2>
+                  <span className={cn("k-tag", d.verified ? "k-tag-pass" : "k-tag-block")}>
+                    {d.verified ? <Check className="size-3" /> : <Cross className="size-3" />}
+                    {d.verified ? "live" : "not verified"}
+                  </span>
+                </div>
+                <p className="mt-2 truncate font-mono text-11 text-text-3" title={d.guardAddress}>
+                  guard {d.guardAddress.slice(0, 10)}…{d.guardAddress.slice(-6)}
+                </p>
+                <p className={cn("mt-3 flex items-start gap-2 text-13", mc?.usesChainSignatures ? "text-text-2" : "text-text-3")}>
+                  {mc?.usesChainSignatures ? <Check className="mt-0.5 size-3.5 shrink-0 text-pass" /> : <Cross className="mt-0.5 size-3.5 shrink-0" />}
+                  {mc?.usesChainSignatures
+                    ? "The guard’s monitor is the NEAR Chain Signatures address."
+                    : mc
+                      ? "The guard’s monitor is a plain EVM key, not the Chain Signatures address."
+                      : "Monitor not read yet."}
+                </p>
+              </article>
+            ))}
+          </section>
+        ) : null}
+        {monitor.data?.chainSignatures.enabled && monitor.data.chainSignatures.evmAddress ? (
+          <p className="-mt-2 text-13 text-text-3">
+            On each chain the monitor should be this protocol’s NEAR Chain Signatures address,{" "}
+            <span className="break-all font-mono text-text-2">{monitor.data.chainSignatures.evmAddress}</span>. Deploy the guard with it as <span className="font-mono">MONITOR_ADDRESS</span> so one tighten-only NEAR key covers every chain.
+          </p>
+        ) : null}
+        <section className="overflow-hidden rounded-panel border border-line-2 bg-surface" aria-live="polite" aria-label="Verification checklist">
           <div className="k-bar">
-            <span>On-chain checklist</span>
+            <span>On-chain checklist · {chainName(chain)}</span>
             <span className="k-tnum">{result ? `${passed}/${total} passed` : verify.isPending ? "reading chain…" : `${total} checks`}</span>
           </div>
           <div aria-hidden className="h-0.5 bg-line">
@@ -213,6 +253,7 @@ export function VerifyScreen({ id }: { id: string }) {
             })}
           </ul>
         </section>
+        </div>
       </div>
     </>,
   );

@@ -40,7 +40,7 @@ export interface MockState {
   waitlist: { email: string; protocolType: string }[];
 }
 
-const KEY = "kronos.mock.v4";
+const KEY = "kronos.mock.v5";
 const uuid = () => crypto.randomUUID();
 const now = () => Date.now();
 const iso = (t = now()) => new Date(t).toISOString();
@@ -79,7 +79,7 @@ export function resetMockDb() {
 
 function empty(): MockState {
   return {
-    version: 4,
+    version: 5,
     users: {},
     protocols: [],
     runs: {},
@@ -296,7 +296,13 @@ export function startRun(s: MockState, p: Protocol) {
     commitSha: "3f9a1c2e7b4d8a0f1e2c3b4a5d6e7f8091a2b3c4",
     status: "queued",
     stage: "ingest",
-    tokenCost: 0,
+    tokenCost: 112102,
+    llm: {
+      provider: "near-ai",
+      models: ["z-ai/glm-5.3", "z-ai/glm-5.3", "Qwen/Qwen3.6-35B-A3B-FP8"],
+      chatIds: [],
+      tee: { tee: true, provider: "near-ai", attestation: { signingAddress: "40599fb284f43953bb356b09080fd803c960fc10285ad90eca462ca711ad4acb", modelAttestations: 1 } },
+    },
     startedAt: null,
     finishedAt: null,
     createdAt: iso(),
@@ -403,6 +409,20 @@ function seedMonitoring(s: MockState, protocolId: string, chainId: number) {
   s.events[protocolId] = [
     ev(3, "blocked", { invariantId: "checkOracle", asset: USDC, amount: "2400000000000", data: { function: "borrow", error: "OracleDeviation", from: "0x9f3e…71aa" } }),
     ev(16, "queued", { asset: USDC, amount: "180000000000", invariantId: "outflowWindow", data: { function: "withdraw", claimId: "7", releaseAt: iso(t + 14 * 60_000) } }),
+    ev(31, "tightened", {
+      asset: USDC,
+      amount: "100000000000",
+      txHash: "0x575b873a88b8cf369e33ec2246fb01092ab93f8bdc11cfa54d16851387359094",
+      data: {
+        reason: "24h net outflow at 71% of the window",
+        from: "200000000000",
+        to: "100000000000",
+        via: "chain-signatures",
+        signer: "0xEbBCE871786Aa2B45b437D90Ec7D1fA7853AEC9f",
+        nearTx: "7Hq3mQe1dZ5oT8vWcYb2uKxN4sLpR9aJfG6hD1tVwXyZ",
+        evmTx: "0x575b873a88b8cf369e33ec2246fb01092ab93f8bdc11cfa54d16851387359094",
+      },
+    }),
     ev(48, "released", { asset: USDC, amount: "12500000000", invariantId: "outflowWindow", data: { function: "withdraw", claimId: "6", reason: "fresh attestation" } }),
     ev(92, "admin_queued", { invariantId: "tier2Timelock", data: { function: "listMarket", actionId: 3, tier: 2, functionName: "listMarket(address,address,uint256)" } }),
     ev(117, "blocked", { invariantId: "checkSharePrice", asset: USDC, amount: "890000000000", data: { function: "borrow", error: "SharePriceDelta" } }),

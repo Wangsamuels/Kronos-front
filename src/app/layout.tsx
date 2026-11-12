@@ -6,9 +6,9 @@ import { MockBadge } from "@/components/MockBadge";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Kronos — a guard for DeFi protocols", template: "%s · Kronos" },
+  title: { default: "Kronos — a security layer for lending protocols, built on NEAR", template: "%s · Kronos" },
   description:
-    "Kronos maps every entry point in your protocol, writes the invariants, attacks them on a fork, and hands you a guard you merge in one PR. Lending ships first; bridges next.",
+    "AI in a trusted enclave on NEAR AI Cloud writes the guard. Aurora enforces it cheaply. A NEAR key that can only tighten handles emergencies on every chain. Testnet today; lending first.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
 };
 

@@ -13,7 +13,7 @@ import { Notice } from "@/components/ui/Page";
 import { ArrowUpRight, Check, Chevron, Cross, Gear, Lock, Refresh } from "@/components/ui/Icons";
 import { EmptyState, ErrorState, LoadingBlock, StaleNote } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { qk, useAdminQueue, useEvents, useOverview, useReanalyze, useResults, useRunPackage } from "@/api/queries";
+import { qk, useMonitor, useAdminQueue, useEvents, useOverview, useReanalyze, useResults, useRunPackage } from "@/api/queries";
 import { ApiError, errorMessage } from "@/api/errors";
 import { USE_MOCKS } from "@/lib/env";
 import { chainName } from "@/lib/chains";
@@ -22,6 +22,7 @@ import { formatAmount } from "@/lib/tokens";
 import { addressUrl, txUrl } from "@/lib/chains";
 import type { Attestation, ChainDeployment, VerifyCheck } from "@/api/types";
 import { Tip } from "@/components/ui/Tip";
+import { EmergencyControls } from "@/components/dashboard/EmergencyControls";
 import { hourly } from "@/lib/series";
 import { cn } from "@/lib/cn";
 import { TierTable } from "@/components/review/TierTable";
@@ -31,6 +32,7 @@ const CHIPS = [
   { key: "blocked", label: "Blocked" },
   { key: "queued", label: "Queued" },
   { key: "released", label: "Released" },
+  { key: "tightened", label: "Tightened" },
   { key: "admin", label: "Admin" },
 ] as const;
 
@@ -49,6 +51,7 @@ export function Dashboard({ id }: { id: string }) {
   const feed = useEvents(id, serverKind);
   const all = useEvents(id); // unfiltered, for sparklines and the outflow queue
   const queue = useAdminQueue(id);
+  const monitor = useMonitor(id);
   const runId = ov.data?.protocol.latestRunId;
   const pkg = useRunPackage(runId);
   const reanalyze = useReanalyze(id);
@@ -136,6 +139,7 @@ export function Dashboard({ id }: { id: string }) {
     blocked: events.filter((e) => e.kind === "blocked").length,
     queued: events.filter((e) => e.kind === "queued").length,
     released: events.filter((e) => e.kind === "released").length,
+    tightened: events.filter((e) => e.kind === "tightened").length,
     admin: events.filter((e) => e.kind.startsWith("admin_")).length,
   };
 
@@ -196,6 +200,9 @@ export function Dashboard({ id }: { id: string }) {
           </a>
         </Notice>
       )}
+
+      {/* emergency controls: the NEAR key and the Chain Signatures address */}
+      {monitor.data ? <EmergencyControls m={monitor.data} className="mt-4" /> : null}
 
       {/* 3 — the last 24 hours */}
       <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line-2 bg-line md:grid-cols-3 lg:grid-cols-5">
@@ -351,7 +358,7 @@ export function Dashboard({ id }: { id: string }) {
         ) : items.length === 0 ? (
           <EmptyState title={chip === "all" ? "Nothing yet" : `Nothing ${chip} in this window`}>Blocked, queued and released actions show up here within 15 seconds.</EmptyState>
         ) : (
-          <ul aria-live="polite">{items.map((e) => <EventRow key={e.id} e={e} chainId={e.chainId ?? p.chainId} showChain />)}</ul>
+          <ul aria-live="polite">{items.map((e) => <EventRow key={e.id} e={e} chainId={e.chainId ?? p.chainId} showChain mpcAddress={monitor.data?.chainSignatures.evmAddress} />)}</ul>
         )}
         <div className="flex justify-end border-t border-line px-5 py-2.5">
           <StaleNote updatedAt={feed.dataUpdatedAt} maxAgeMs={45_000} />

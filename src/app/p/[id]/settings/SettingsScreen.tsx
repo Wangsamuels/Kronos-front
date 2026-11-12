@@ -172,7 +172,7 @@ export function SettingsScreen({ id }: { id: string }) {
                 <label className="flex cursor-pointer items-start justify-between gap-6 border-t border-line p-5">
                   <span>
                     <span className="block text-15 font-medium text-text">Tighten automatically on anomalies</span>
-                    <span className="mt-1 block text-13 text-text-2">On: the monitor may pause or lower limits by itself. Off: it alerts, but never pauses or lowers anything. Either way it can never loosen.</span>
+                    <span className="mt-1 block text-13 text-text-2">On: the monitor may lower outflow limits by itself, signed onto each chain through NEAR Chain Signatures. Off: it alerts, but never pauses or lowers limits. Either way its key can only tighten.</span>
                   </span>
                   <span className="relative mt-0.5 inline-flex shrink-0">
                     <input type="checkbox" role="switch" className="peer sr-only" checked={!!form.autoTighten} onChange={(e) => setForm({ ...form, autoTighten: e.target.checked })} />

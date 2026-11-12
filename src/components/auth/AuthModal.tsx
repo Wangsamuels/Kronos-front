@@ -80,6 +80,7 @@ export function AuthModal() {
     if (p) window.location.href = githubStartUrl(p.github.startUrl, returnTo);
   };
 
+  const group = "mt-3 font-mono text-11 uppercase tracking-[0.08em] text-text-3 first:mt-0";
   const option = "flex min-h-[3.25rem] w-full items-center gap-3 rounded-ctl border border-line-2 px-4 text-left text-15 text-text transition-colors duration-k hover:border-text-3 hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
@@ -100,7 +101,7 @@ export function AuthModal() {
             </D.Close>
           </div>
           <D.Description id="signin-desc" className="mt-2 text-15 text-text-2">
-            {REASON[pending ? "submit" : req?.reason ?? ""] ?? "One step for new and returning teams. Pick whichever you already use."}
+            {REASON[pending ? "submit" : req?.reason ?? ""] ?? "Continue with GitHub, an EVM wallet or a NEAR wallet. One step for new and returning teams."}
           </D.Description>
 
           <div className="mt-6 grid gap-2">
@@ -117,44 +118,46 @@ export function AuthModal() {
             ) : (
               <>
                 {p.github.enabled ? (
-                  <button type="button" onClick={github} className="flex min-h-[3.25rem] w-full items-center gap-3 rounded-ctl bg-text px-4 text-left text-15 font-medium text-bg transition-colors duration-k hover:bg-text/90">
-                    <GitHubMark />
-                    Continue with GitHub
-                    <ArrowRight className="ml-auto" />
-                  </button>
+                  <>
+                    <p className={group}>GitHub</p>
+                    <button type="button" onClick={github} className={option}>
+                      <GitHubMark className="text-text-2" />
+                      Continue with GitHub
+                      <ArrowRight className="ml-auto text-text-3" />
+                    </button>
+                  </>
                 ) : null}
 
-                {p.siwe.enabled || p.near.enabled ? (
-                  <p className="mb-1 mt-4 flex items-center gap-3 font-mono text-11 uppercase tracking-[0.08em] text-text-3">
-                    <span aria-hidden className="h-px flex-1 bg-line" />
-                    or a wallet
-                    <span aria-hidden className="h-px flex-1 bg-line" />
-                  </p>
-                ) : null}
-
-                {p.siwe.enabled
-                  ? wallet.connectors.map((c) => (
+                {p.siwe.enabled && wallet.connectors.length ? (
+                  <>
+                    <p className={group}>EVM wallet</p>
+                    {wallet.connectors.map((c) => (
                       <button key={c.id} type="button" disabled={!!wallet.busy} onClick={() => wallet.evm(c.id)} className={option} aria-busy={wallet.busy === c.id || undefined}>
-                        <Wallet className="text-text-3" />
+                        <Wallet className="text-text-2" />
                         {c.name === "Injected" ? "Browser wallet" : c.name}
-                        <span className="ml-auto font-mono text-11 uppercase tracking-[0.06em] text-text-3">{wallet.busy === c.id ? "check wallet…" : "EVM"}</span>
+                        <span className="ml-auto font-mono text-11 uppercase tracking-[0.06em] text-text-3">{wallet.busy === c.id ? "check wallet…" : "Aurora · Base"}</span>
                       </button>
-                    ))
-                  : null}
-                {p.near.enabled
-                  ? (
+                    ))}
+                  </>
+                ) : null}
+
+                {p.near.enabled ? (
+                  <>
+                    <p className={group}>NEAR wallet</p>
+                    {(
                       [
                         ["meteor-wallet", "Meteor"],
                         ["my-near-wallet", "MyNearWallet"],
                       ] as const
                     ).map(([id, name]) => (
                       <button key={id} type="button" disabled={!!wallet.busy} onClick={() => wallet.near(id)} className={option} aria-busy={wallet.busy === id || undefined}>
-                        <Wallet className="text-text-3" />
+                        <Wallet className="text-text-2" />
                         {name}
                         <span className="ml-auto font-mono text-11 uppercase tracking-[0.06em] text-text-3">{wallet.busy === id ? "check wallet…" : `NEAR ${p.near.network}`}</span>
                       </button>
-                    ))
-                  : null}
+                    ))}
+                  </>
+                ) : null}
 
                 {p.dev.enabled && SHOW_DEV_LOGIN && !USE_MOCKS ? (
                   <button type="button" onClick={devLogin} className="mt-2 h-10 rounded-ctl font-mono text-11 uppercase tracking-[0.06em] text-text-3 transition-colors duration-k hover:text-text">

@@ -1736,6 +1736,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/protocols/{id}/monitor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How the monitor can act on this protocol: the NEAR registry + tighten-only key, and the NEAR Chain Signatures EVM address (set it as MONITOR_ADDRESS when deploying the guard) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            near: {
+                                network: string;
+                                registry: string;
+                                monitorAccount: string | null;
+                                functionCallKey: boolean;
+                            };
+                            chainSignatures: {
+                                enabled: boolean;
+                                /** @description NEAR MPC signer contract */
+                                signer: string;
+                                /** @description derivation path; predecessor = the registry contract */
+                                path: string;
+                                /** @description EVM address controlled by NEAR MPC for this protocol (same on every EVM chain) */
+                                evmAddress: string | null;
+                            };
+                            chains: {
+                                chainId: number;
+                                guardAddress: string;
+                                guardMonitor: string | null;
+                                /** @description guard.monitor() is the derived address */
+                                usesChainSignatures: boolean;
+                                derivedAddressBalanceWei: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/protocols/{id}/admin-queue": {
         parameters: {
             query?: never;

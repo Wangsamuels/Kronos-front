@@ -11,7 +11,8 @@ import { PageHead, StepEyebrow } from "@/components/ui/Page";
 import { ArrowRight, Lock } from "@/components/ui/Icons";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { useApprove, usePatchIntent, usePatchInvariant, usePatchTier, useProtocol, useResults } from "@/api/queries";
+import { useApprove, usePatchIntent, usePatchInvariant, usePatchTier, useProtocol, useResults, useRun } from "@/api/queries";
+import { summarizeLlm } from "@/lib/llm";
 import { lastEventIdFor, openStream } from "@/api/stream";
 import { ApiError, errorMessage } from "@/api/errors";
 import type { Entrypoint } from "@/api/types";
@@ -27,6 +28,8 @@ export function ReviewScreen({ id }: { id: string }) {
   const patchIntent = usePatchIntent(runId);
   const patchTier = usePatchTier(runId);
   const approve = useApprove(runId, id);
+  const run = useRun(runId || null);
+  const llm = summarizeLlm(run.data?.llm);
   const [tab, setTab] = useState("invariants");
   const [needsDecision, setNeedsDecision] = useState<string[]>([]);
 
@@ -100,7 +103,7 @@ export function ReviewScreen({ id }: { id: string }) {
       <PageHead
         eyebrow={<StepEyebrow n={3} label="Review" />}
         title="Review what the guard will enforce"
-        lede="Nothing ships until you approve it. Rules the two drafters disagreed on are pinned to the top and need a decision."
+        lede="The AI drafted these rules; it does not decide. Nothing ships until you approve it. Where the two models disagreed, the rule is pinned to the top and needs your decision."
         right={
           locked ? (
             <ButtonLink href={`/p/${id}/analysis`} variant="secondary">
@@ -186,6 +189,7 @@ export function ReviewScreen({ id }: { id: string }) {
             <InvariantCard
               key={`${inv.id}-${JSON.stringify(inv.params)}`}
               inv={inv}
+              llm={llm}
               highlight={needsDecision.includes(inv.id) && inv.status === "proposed"}
               locked={locked}
               busy={patchInv.isPending && patchInv.variables?.id === inv.id}
@@ -232,7 +236,14 @@ export function ReviewScreen({ id }: { id: string }) {
                 )
               } />
           )}
-          <p className="mt-4 max-w-[44rem] text-13 text-text-3">Safer is instant, riskier waits: Tier 0 instant (tighten only), Tier 1 48 hours, Tier 2 7 days, Tier 3 14 days plus an independent co-sign. Hard rules can only be made stricter.</p>
+          <div className="mt-4 grid max-w-[52rem] gap-2 text-13 text-text-3">
+            <p>
+              <span className="text-text-2">What a tier means.</span> A change to one of these functions is announced on-chain, then waits in public before it can run: Tier 0 runs at once (only for changes that make the protocol safer), Tier 1 waits 48 hours, Tier 2 waits 7 days, Tier 3 waits 14 days and needs a second, independent signer. During the wait a guardian can cancel it. Nobody can run it early.
+            </p>
+            <p>
+              <span className="text-text-2">Hard rules.</span> Rows marked with a lock were set by a fixed rule, not by the AI (an oracle change is always Tier 2 or higher, upgrades and signer changes are Tier 3). They can only be raised.
+            </p>
+          </div>
         </Tabs.Content>
       </Tabs.Root>
 
