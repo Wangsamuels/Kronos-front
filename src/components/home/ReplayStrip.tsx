@@ -1,59 +1,52 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ATTACK_TESTS_URL } from "@/lib/links";
+import { ArrowUpRight } from "@/components/ui/Icons";
 
 /** Only rows the backend's Foundry attack library replays (contracts/test). */
 const ROWS = [
-  { pattern: "Oracle pump", vector: "Spot price moved 41% above attested TWAP", loss: "modeled · thin-collateral oracle pumps, 2026", result: "Blocked at checkOracle", tone: "pass" },
-  { pattern: "Share inflation", vector: "Donation moved exchange rate in one transaction", loss: "modeled · rounding / donation", result: "Blocked at checkSharePrice", tone: "pass" },
-  { pattern: "Fake collateral listing", vector: "New market listed, then borrowed against immediately", loss: "modeled · fake-collateral listings", result: "Blocked at probation + Tier 2 timelock", tone: "pass" },
-  { pattern: "Timelock bypass", vector: "Governance tried to skip delay on a risk-adding change", loss: "modeled · admin oracle swap", result: "Blocked at guard-owned timelock", tone: "pass" },
-  { pattern: "Split withdrawals", vector: "25 same-sized outflows under a per-tx cap", loss: "modeled · rolling window", result: "Queued at outflow window", tone: "queue" },
-  { pattern: "Intent tampering", vector: "Calldata amount differs from the signed EIP-712 intent", loss: "modeled · signature replay", result: "Blocked at intent pre-check", tone: "pass" },
+  { pattern: "Oracle pump", vector: "Spot price pushed 41% above the attested TWAP, then borrowed against.", source: "thin-collateral oracle pumps", verdict: "blocked", at: "checkOracle" },
+  { pattern: "Share inflation", vector: "A donation moves the exchange rate inside a single transaction.", source: "rounding / donation attacks", verdict: "blocked", at: "checkSharePrice" },
+  { pattern: "Fake collateral listing", vector: "A new market is listed and borrowed against immediately.", source: "fake-collateral listings", verdict: "blocked", at: "probation + Tier 2 timelock" },
+  { pattern: "Timelock bypass", vector: "Governance tries to skip the delay on a risk-adding change.", source: "admin oracle swaps", verdict: "blocked", at: "guard-owned timelock" },
+  { pattern: "Split withdrawals", vector: "25 same-sized outflows, each one under the per-transaction cap.", source: "rolling-window drains", verdict: "queued", at: "outflow window" },
+  { pattern: "Intent tampering", vector: "Calldata amount differs from the signed EIP-712 intent.", source: "signature replay", verdict: "blocked", at: "intent pre-check" },
 ] as const;
 
+/** The attack ledger: one row per replayed pattern, the verdict set apart on the right like a receipt. */
 export function ReplayStrip() {
+  const reduce = useReducedMotion();
   return (
-    <div>
-      <div role="table" aria-label="Replayed attacks" className="hidden md:block">
-        <div role="row" className="grid grid-cols-12 gap-4 border-b border-line py-3">
-          {["Pattern", "Vector", "Original loss", "Result"].map((h, i) => (
-            <span role="columnheader" key={h} className={["k-label col-span-2", "k-label col-span-4", "k-label col-span-3", "k-label col-span-3"][i]}>
-              {h}
-            </span>
-          ))}
-        </div>
-        {ROWS.map((r, i) => (
-          <motion.div
-            role="row"
-            key={r.pattern}
-            initial={{ opacity: 0, x: -8 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ delay: i * 0.06 }}
-            className="grid grid-cols-12 items-center gap-4 border-b border-line py-3.5 text-15"
+    <ol className="border-b border-line" aria-label="Replayed attacks">
+      {ROWS.map((r, i) => (
+        <motion.li
+          key={r.pattern}
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ delay: i * 0.05, duration: 0.35 }}
+          className="group grid gap-x-6 gap-y-3 border-t border-line py-5 transition-colors duration-k hover:bg-surface/60 lg:grid-cols-12 lg:items-center lg:px-3 lg:py-6"
+        >
+          <span className="hidden font-mono text-13 text-text-3 lg:col-span-1 lg:block">{String(i + 1).padStart(2, "0")}</span>
+          <div className="lg:col-span-5">
+            <p className="text-[19px] font-medium leading-snug tracking-[-0.01em] text-text">{r.pattern}</p>
+            <p className="mt-1 max-w-[30rem] text-15 text-text-2">{r.vector}</p>
+          </div>
+          <p className="font-mono text-11 uppercase tracking-[0.06em] text-text-3 lg:col-span-2">
+            modeled on
+            <span className="block normal-case tracking-normal text-text-2 lg:mt-1 lg:text-13">{r.source}</span>
+          </p>
+          <a
+            href={ATTACK_TESTS_URL}
+            className="flex items-center gap-3 lg:col-span-4 lg:justify-end"
+            aria-label={`${r.pattern}: ${r.verdict} at ${r.at}. View the test.`}
           >
-            <span role="cell" className="col-span-2 text-text">{r.pattern}</span>
-            <span role="cell" className="col-span-4 text-text-2">{r.vector}</span>
-            <span role="cell" className="col-span-3 font-mono text-13 text-text">{r.loss}</span>
-            <a role="cell" href={ATTACK_TESTS_URL} className={`col-span-3 font-mono text-13 hover:underline ${r.tone === "pass" ? "text-pass" : "text-queue"}`}>
-              {r.result}
-            </a>
-          </motion.div>
-        ))}
-      </div>
-      <ul className="grid gap-2 md:hidden">
-        {ROWS.map((r) => (
-          <li key={r.pattern} className="k-panel p-4">
-            <p className="text-15 text-text">{r.pattern}</p>
-            <p className="mt-1 text-13 text-text-2">{r.vector}</p>
-            <p className="mt-2 font-mono text-11 text-text-3">{r.loss}</p>
-            <a href={ATTACK_TESTS_URL} className={`mt-2 block font-mono text-13 ${r.tone === "pass" ? "text-pass" : "text-queue"}`}>
-              {r.result}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
+            <span className={r.verdict === "blocked" ? "k-tag k-tag-block" : "k-tag k-tag-queue"}>{r.verdict}</span>
+            <span className="font-mono text-13 text-text-2 transition-colors duration-k group-hover:text-text lg:whitespace-nowrap">{r.at}</span>
+            <ArrowUpRight className="hidden size-3.5 shrink-0 text-text-3 transition-colors duration-k group-hover:text-text lg:block" />
+          </a>
+        </motion.li>
+      ))}
+    </ol>
   );
 }

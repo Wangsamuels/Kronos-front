@@ -34,19 +34,28 @@ export const SCRIPTED_TRACES: Trace[] = [
 
 type NodeState = "idle" | "pass" | "flash" | "block" | "queue";
 
+const SHORT: Record<string, string> = { "Pre-checks": "Pre", Execute: "Exec", "Post-checks": "Post", "Outflow window": "Outflow" };
+const VERDICT = {
+  passed: { word: "passed", tag: "k-tag-pass", text: "text-pass" },
+  blocked: { word: "reverted", tag: "k-tag-block", text: "text-block" },
+  queued: { word: "queued", tag: "k-tag-queue", text: "text-queue" },
+} as const;
+
 /**
- * The signature motion: a transaction moving through Intent → Pre-checks → Execute → Post-checks →
- * Outflow window. Passed stages flash --pass for 120ms; a blocked trace stops, its node turns
- * --block and the reason types out. Pauses off-screen. Reduced motion shows each end state at once.
+ * The signature motion, framed as the guard's console: one transaction moves through
+ * Intent → Pre-checks → Execute → Post-checks → Outflow window while the last few verdicts scroll
+ * underneath. Passed stages flash --pass for 120ms; a blocked trace stops, its node turns --block and
+ * the reason types out. Pauses off-screen. Reduced motion shows each end state at once.
  */
-export function TraceRail({ traces = SCRIPTED_TRACES, stages = GUARD_STAGES as readonly string[], compact, className }: { traces?: Trace[]; stages?: readonly string[]; compact?: boolean; className?: string }) {
+export function TraceRail({ traces = SCRIPTED_TRACES, stages = GUARD_STAGES as readonly string[], className }: { traces?: Trace[]; stages?: readonly string[]; className?: string }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const [ti, setTi] = useState(2); // start on the oracle pump so the first paint shows a block
   const [nodes, setNodes] = useState<NodeState[]>(() => endState(traces[2]!, stages.length));
   const [typed, setTyped] = useState(traces[2]?.reason ?? "");
-  const trace = traces[ti % traces.length]!;
+  const n = traces.length;
+  const trace = traces[ti % n]!;
 
   useEffect(() => {
     const el = ref.current;
@@ -89,73 +98,109 @@ export function TraceRail({ traces = SCRIPTED_TRACES, stages = GUARD_STAGES as r
   }, [ti, visible, reduce, traces, stages.length]);
 
   const stopped = trace.verdict !== "passed";
+  const settled = nodes.some((s) => s === "block" || s === "queue") || nodes.every((s) => s === "pass");
+  const v = VERDICT[trace.verdict];
+  // The four traces before the current one, newest first. Derived from the index, so it is deterministic.
+  const history = [1, 2, 3, 4].map((k) => ({ key: ti - k, t: traces[(((ti - k) % n) + n) % n]! }));
+
   return (
-    <div ref={ref} className={cn("k-panel bg-surface p-5", className)} aria-label="Live guard trace (scripted)">
-      <div className="flex items-center justify-between">
-        <span className="k-label">Live trace</span>
-        <span className="font-mono text-13 text-text-2">{trace.tx}</span>
+    <div ref={ref} className={cn("overflow-hidden rounded-panel border border-line-2 bg-surface shadow-[0_24px_80px_-32px_rgb(0_0_0/0.9)]", className)} aria-label="Guard console replaying scripted transactions">
+      {/* title bar */}
+      <div className="flex h-11 items-center justify-between gap-3 border-b border-line px-4">
+        <span className="flex items-center gap-2.5 font-mono text-11 uppercase tracking-[0.08em] text-text-2">
+          <span className="relative flex size-2">
+            <span aria-hidden className="absolute inset-0 animate-k-ping rounded-full bg-pass" />
+            <span aria-hidden className="relative block size-2 rounded-full bg-pass" />
+          </span>
+          Guard live
+        </span>
+        <span className="truncate font-mono text-11 text-text-3">
+          GuardedMiniLend<span className="hidden min-[420px]:inline"> · base-sepolia</span>
+        </span>
       </div>
-      {/* horizontal on lg+, vertical on small screens */}
-      <ol className={cn("mt-5 grid gap-0", compact ? "" : "lg:grid-cols-5", "grid-cols-1")}>
-        {stages.map((s, i) => {
-          const st = nodes[i] ?? "idle";
-          return (
-            <li key={s} className={cn("relative flex items-center gap-3 py-1.5", compact ? "" : "lg:flex-col lg:items-start lg:gap-2 lg:py-0")}>
-              <span className="relative flex items-center">
+
+      {/* current transaction */}
+      <div className="px-4 pb-4 pt-5 sm:px-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="min-w-0 truncate font-mono text-15 text-text">
+            <span className="text-text-3">{trace.action}</span> {trace.amount}
+          </p>
+          <span className="hidden shrink-0 font-mono text-11 text-text-3 min-[520px]:block">{trace.tx}</span>
+        </div>
+
+        <ol className="mt-6 grid grid-cols-5" aria-label="Guard stages">
+          {stages.map((s, i) => {
+            const st = nodes[i] ?? "idle";
+            const reached = st !== "idle";
+            return (
+              <li key={s} className="relative">
+                {i < stages.length - 1 ? (
+                  <span aria-hidden className="absolute left-[11px] right-0 top-[5px] h-px bg-line-2">
+                    <span className={cn("block h-full origin-left bg-pass transition-transform duration-300 ease-k", st === "pass" ? "scale-x-100" : "scale-x-0")} />
+                  </span>
+                ) : null}
                 <span
                   className={cn(
-                    "relative z-10 block size-2.5 rounded-full border transition-colors duration-[120ms]",
-                    st === "idle" && "border-text-3 bg-transparent",
+                    "relative z-10 block size-[11px] rounded-full border-[1.5px] bg-surface transition-colors duration-[120ms]",
+                    st === "idle" && "border-text-3",
                     (st === "pass" || st === "flash") && "border-pass bg-pass",
                     st === "flash" && "shadow-[0_0_0_4px_rgb(var(--pass)/0.25)]",
-                    st === "block" && "border-block bg-block",
-                    st === "queue" && "border-queue bg-queue",
+                    st === "block" && "border-block bg-block shadow-[0_0_0_4px_rgb(var(--block)/0.2)]",
+                    st === "queue" && "border-queue bg-queue shadow-[0_0_0_4px_rgb(var(--queue)/0.2)]",
                   )}
                 />
-              </span>
-              {i < stages.length - 1 ? (
-                <span aria-hidden className={cn("absolute left-[4.5px] top-[18px] h-[calc(100%-12px)] w-px bg-line", compact ? "" : "lg:left-3 lg:top-[4.5px] lg:h-px lg:w-[calc(100%-12px)]")} />
-              ) : null}
-              <span className={cn("font-mono text-11", st === "block" ? "text-block" : st === "queue" ? "text-queue" : "text-text-3")}>{s}</span>
-            </li>
-          );
-        })}
-      </ol>
-      {/* Verdict: neutral surface, no colored stripe. Only the small status word carries color. */}
-      <div className="mt-5 min-h-[88px] rounded-ctl border border-line bg-surface-2 px-4 py-3 font-mono text-13" aria-live="polite">
-        <div className="flex items-center justify-between gap-3 text-11 uppercase tracking-[0.08em]">
-          <span className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className={cn("block size-1.5 rounded-full", trace.verdict === "blocked" ? "bg-block/80" : trace.verdict === "queued" ? "bg-queue/80" : "bg-pass/80")}
-            />
-            <span className={trace.verdict === "blocked" ? "text-block/90" : trace.verdict === "queued" ? "text-queue/90" : "text-pass/90"}>
-              {trace.verdict === "blocked" ? "reverted" : trace.verdict === "queued" ? "queued" : "passed"}
+                <span className={cn("mt-3 block pr-1 font-mono text-[10px] uppercase leading-tight tracking-[0.04em] min-[520px]:text-11", st === "block" ? "text-block" : st === "queue" ? "text-queue" : reached ? "text-text" : "text-text-3")}>
+                  <span className="min-[520px]:hidden">{SHORT[s] ?? s}</span>
+                  <span className="hidden min-[520px]:inline">{s}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+
+        {/* Verdict: neutral surface, no colored stripe. Only the tag carries color. */}
+        <div className="mt-5 min-h-[104px] rounded-ctl border border-line bg-surface-2 px-4 py-3 font-mono text-13" aria-live="polite">
+          <div className="flex items-center justify-between gap-3">
+            <span className={cn("k-tag transition-opacity duration-k", v.tag, settled ? "opacity-100" : "opacity-0")}>{v.word}</span>
+            <span className="truncate text-11 uppercase tracking-[0.06em] text-text-3">
+              {stopped && trace.stopAt !== undefined ? `at ${stages[trace.stopAt]}` : `${stages.length}/${stages.length} stages`}
             </span>
-          </span>
-          <span className="truncate text-text-3">{stopped && trace.stopAt !== undefined ? `at ${stages[trace.stopAt]}` : `${stages.length}/${stages.length} stages`}</span>
+          </div>
+          {stopped ? (
+            <>
+              <p className="mt-2.5 break-words text-text">
+                {typed || "\u00a0"}
+                {typed && typed !== trace.reason ? <span aria-hidden className="ml-0.5 inline-block h-3.5 w-[7px] translate-y-0.5 bg-text-2" /> : null}
+              </p>
+              <p className="mt-1 text-text-3">{trace.detail}</p>
+            </>
+          ) : (
+            <>
+              <p className={cn("mt-2.5 text-text transition-opacity duration-k", settled ? "opacity-100" : "opacity-40")}>all checks passed</p>
+              <p className="mt-1 text-text-3">intent signed · attestation fresh · state within bounds</p>
+            </>
+          )}
         </div>
-        {stopped ? (
-          <>
-            <p className="mt-2 break-words text-text">{typed || "\u00a0"}</p>
-            <p className="mt-1 text-text-3">{trace.detail}</p>
-          </>
-        ) : (
-          <>
-            <p className="mt-2 text-text">all checks passed</p>
-            <p className="mt-1 text-text-3">
-              {trace.action} {trace.amount} · intent signed · attestation fresh
-            </p>
-          </>
-        )}
       </div>
-      <p className="mt-3 font-mono text-13 text-text-3">
-        action <span className="text-text">{trace.action}</span>
-        <span className="px-2" />
-        amount <span className="text-text">{trace.amount}</span>
-        <span className="px-2" />
-        verdict <span className={trace.verdict === "blocked" ? "text-block" : trace.verdict === "queued" ? "text-queue" : "text-pass"}>{trace.verdict}</span>
-      </p>
+
+      {/* recent verdicts */}
+      <div className="border-t border-line">
+        <p className="flex items-center justify-between px-4 pb-1 pt-3 font-mono text-11 uppercase tracking-[0.08em] text-text-3 sm:px-5">
+          <span>Recent</span>
+          <span>scripted replay</span>
+        </p>
+        <ul className="px-4 pb-3 font-mono text-13 sm:px-5">
+          {history.map(({ key, t }, i) => (
+            <li key={key} className={cn("grid grid-cols-[1fr_auto] items-center gap-3 border-t border-line/70 py-2 first:border-t-0 min-[520px]:grid-cols-[7.5rem_1fr_auto]", i === 0 && !reduce && "animate-k-row-in", i === 3 && "hidden min-[520px]:grid")}>
+              <span className="hidden text-text-3 min-[520px]:block">{t.tx}</span>
+              <span className="min-w-0 truncate text-text-2">
+                <span className="text-text-3">{t.action}</span> {t.amount}
+              </span>
+              <span className={cn("text-11 uppercase tracking-[0.06em]", VERDICT[t.verdict].text)}>{VERDICT[t.verdict].word}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

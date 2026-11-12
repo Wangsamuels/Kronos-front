@@ -9,6 +9,7 @@
   --surface: 18 20 24; /* #121418 */
   --surface-2: 24 27 32; /* #181B20 */
   --line: 35 38 45; /* #23262D */
+  --line-2: 52 56 66; /* stronger hairline: hover, active, frame marks */
   --text: 236 234 228; /* #ECEAE4 */
   --text-2: 154 157 166; /* #9A9DA6 */
   --text-3: 120 123 133; /* #62656E is the spec value; nudged to #787B85 for AA on small labels */
@@ -24,6 +25,7 @@
   --surface: 255 255 255;
   --surface-2: 239 238 233; /* #EFEEE9 */
   --line: 222 220 213; /* #DEDCD5 */
+  --line-2: 196 193 184;
   --text: 17 18 20; /* #111214 */
   --text-2: 85 88 95; /* #55585F */
   --text-3: 110 112 118; /* #8A8C92 in spec; darkened for AA */
@@ -65,12 +67,110 @@
   h3 {
     font-weight: 500;
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 @layer components {
   .k-container {
     @apply mx-auto w-full max-w-grid px-5 md:px-8;
+  }
+  /* The page frame: one continuous drawing-sheet column. Sections are ruled off inside it and every
+     rule ends in a registration mark, so the whole page reads as a single sheet. */
+  .k-frame {
+    @apply relative mx-auto w-full max-w-grid;
+  }
+  @media (min-width: 768px) {
+    .k-frame {
+      border-left: 1px solid rgb(var(--line));
+      border-right: 1px solid rgb(var(--line));
+    }
+  }
+  .k-rule {
+    @apply relative border-t border-line;
+  }
+  .k-rule::before,
+  .k-rule::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    width: 7px;
+    height: 7px;
+    display: none;
+    background:
+      linear-gradient(rgb(var(--text-3)), rgb(var(--text-3))) center / 7px 1px no-repeat,
+      linear-gradient(rgb(var(--text-3)), rgb(var(--text-3))) center / 1px 7px no-repeat;
+  }
+  .k-rule::before { left: -4px; }
+  .k-rule::after { right: -4px; }
+  @media (min-width: 768px) {
+    .k-rule::before,
+    .k-rule::after {
+      display: block;
+    }
+  }
+  .k-pad {
+    @apply px-5 md:px-10 lg:px-14;
+  }
+  .k-section {
+    @apply k-rule k-pad py-16 md:py-24 lg:py-28;
+  }
+  /* Faint square grid that fades out from the top: used behind the hero and the closing CTA. */
+  .k-grid-bg {
+    background-image:
+      linear-gradient(to right, rgb(var(--line) / 0.7) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(var(--line) / 0.7) 1px, transparent 1px);
+    background-size: 56px 56px;
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 25%, transparent 78%);
+    mask-image: radial-gradient(120% 90% at 50% 0%, #000 25%, transparent 78%);
+  }
+  .k-chip {
+    @apply inline-flex h-7 items-center gap-2 rounded-full border border-line bg-surface px-3 font-mono text-11 uppercase text-text-2;
+    letter-spacing: 0.06em;
+  }
+  .k-tag {
+    @apply inline-flex h-6 items-center gap-1.5 rounded-[4px] border px-2 font-mono text-11 uppercase;
+    letter-spacing: 0.06em;
+  }
+  .k-tag-pass { @apply border-pass/30 bg-pass/10 text-pass; }
+  .k-tag-block { @apply border-block/30 bg-block/10 text-block; }
+  .k-tag-queue { @apply border-queue/30 bg-queue/10 text-queue; }
+  .k-tag-idle { @apply border-line bg-surface-2 text-text-3; }
+  .k-link {
+    @apply text-text underline decoration-line-2 underline-offset-4 transition-colors duration-k hover:decoration-text;
+  }
+  /* Custom range: hairline track, solid thumb. */
+  .k-range {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: ew-resize;
+  }
+  .k-range::-webkit-slider-runnable-track { height: 44px; background: transparent; }
+  .k-range::-moz-range-track { height: 44px; background: transparent; }
+  .k-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 15px;
+    border-radius: 9999px;
+    background: rgb(var(--text));
+    box-shadow: 0 0 0 4px rgb(var(--bg)), 0 0 0 5px rgb(var(--line-2));
+  }
+  .k-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 0;
+    border-radius: 9999px;
+    background: rgb(var(--text));
+    box-shadow: 0 0 0 4px rgb(var(--bg)), 0 0 0 5px rgb(var(--line-2));
   }
   .k-label {
     @apply font-mono text-11 uppercase text-text-3;
@@ -109,7 +209,7 @@
     top: 0;
     bottom: 0;
     width: 1px;
-    background: rgb(var(--line) / 0.55);
+    background: rgb(var(--line) / 0.4);
   }
   /* The drop is a lane-tall box translated from -100% to +100% of its own height (= the hero's
      height), so speed scales with the hero; the visible streak is its ::after, pinned to the bottom. */
@@ -163,4 +263,9 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+@keyframes k-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
