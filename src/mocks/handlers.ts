@@ -17,9 +17,9 @@ const err = (status: number, code: string, message: string) => HttpResponse.json
 
 // ---- auth: token = "mock.<userId>.<issuedAt>"; the "refresh cookie" is a localStorage flag.
 const SESSION_KEY = "kronos.mock.session";
-function issue(userId: string) {
+function issue(userId: string, isNewUser = false) {
   localStorage.setItem(SESSION_KEY, userId);
-  return { accessToken: `mock.${userId}.${Date.now()}`, expiresIn: 900, userId };
+  return { accessToken: `mock.${userId}.${Date.now()}`, expiresIn: 900, userId, isNewUser };
 }
 function userFrom(req: Request): string | null {
   const h = req.headers.get("authorization");
@@ -62,13 +62,30 @@ export const handlers = [
     }),
   ),
 
+  http.get("/v1/auth/providers", () =>
+    HttpResponse.json({
+      // No GitHub on the mock API: the modal's GitHub button signs in the demo user instead.
+      github: { enabled: true, startUrl: `${location.origin}/v1/auth/github`, appInstallUrl: null },
+      siwe: { enabled: true, domain: location.host, uri: location.origin, chainIds: [BASE_SEPOLIA, AURORA_TESTNET], statement: "Sign in to Kronos. This request will not trigger a blockchain transaction or cost any gas." },
+      near: { enabled: true, network: "testnet", recipient: location.host, message: "Sign in to Kronos" },
+      dev: { enabled: true },
+    }),
+  ),
+  http.post("/v1/auth/exchange", async ({ request }) => {
+    const body = await request.json();
+    const m = body.code.match(/^mock-code-(.+)$/);
+    if (!m) return err(400, "INVALID_CODE", "Code is invalid or expired");
+    ensureUser(m[1]!, m[1]!.replace(/^user-/, ""));
+    return HttpResponse.json(issue(m[1]!));
+  }),
   http.post("/v1/auth/dev", async ({ request }) => {
     await delay(LAT);
     const body = (await request.json().catch(() => ({}))) as { login?: string };
     const login = body.login ?? "demo";
     const id = `user-${login}`;
+    const isNew = !db().users[id];
     ensureUser(id, login);
-    return HttpResponse.json(issue(id));
+    return HttpResponse.json(issue(id, isNew));
   }),
   http.post("/v1/auth/refresh", async () => {
     await delay(60);
@@ -86,11 +103,12 @@ export const handlers = [
     const body = await request.json();
     const current = userFrom(request);
     const id = current ?? `user-${body.type === "near" ? body.accountId : "wallet"}`;
+    const isNew = !db().users[id];
     const u = ensureUser(id, null);
     if (body.type === "near") u.nearAccount = body.accountId;
     else u.walletAddress = body.message.match(/0x[0-9a-fA-F]{40}/)?.[0] ?? "0x0000000000000000000000000000000000000000";
     save();
-    return HttpResponse.json(issue(id));
+    return HttpResponse.json(issue(id, isNew));
   }),
   http.get("/v1/me", ({ request }) => {
     const id = userFrom(request);
@@ -115,13 +133,15 @@ export const handlers = [
     const { protocol, run } = createProtocol(uid, body);
     return HttpResponse.json({ protocol, analysisId: run.id }, { status: 201 });
   }),
-  http.get("/v1/protocols", async () => {
+  http.get("/v1/protocols", async ({ request }) => {
     await delay(LAT);
+    if (!userFrom(request)) return err(401, "UNAUTHENTICATED", "Sign in first");
     advance();
     return HttpResponse.json({ items: db().protocols, nextCursor: null });
   }),
-  http.get("/v1/protocols/{id}", async ({ params }) => {
+  http.get("/v1/protocols/{id}", async ({ params, request }) => {
     await delay(LAT);
+    if (!userFrom(request)) return err(401, "UNAUTHENTICATED", "Sign in first");
     advance();
     const p = protocolOr404(params.id);
     return p ? HttpResponse.json(p) : err(404, "NOT_FOUND", "Protocol not found");
@@ -130,6 +150,9 @@ export const handlers = [
     const s = db();
     const p = protocolOr404(params.id);
     if (!p) return err(404, "NOT_FOUND", "Protocol not found");
+    const active = p.latestRunId ? s.runs[p.latestRunId] : undefined;
+    if (active && (active.status === "queued" || active.status === "running"))
+      return HttpResponse.json({ error: { code: "CONFLICT", message: "An analysis is already in progress", details: { analysisId: active.id } } }, { status: 409 }) as never;
     const run = startRun(s, p);
     save();
     return HttpResponse.json(publicRun(run), { status: 201 });
@@ -197,7 +220,11 @@ export const handlers = [
     if (!run) return err(404, "NOT_FOUND", "Analysis not found");
     if (run.status !== "review") return err(409, "CONFLICT", `Run is ${run.status}`);
     const flagged = (s.invariants[run.id] ?? []).filter((i) => i.needsReview && i.status === "proposed");
-    if (flagged.length) return err(409, "CONFLICT", `${flagged.length} flagged invariant(s) must be decided first`);
+    if (flagged.length)
+      return HttpResponse.json(
+        { error: { code: "CONFLICT", message: "Some invariants need an explicit decision (drafters disagreed)", details: { invariantIds: flagged.map((i) => i.id) } } },
+        { status: 409 },
+      ) as never;
     for (const i of s.invariants[run.id] ?? []) if (i.status === "proposed") i.status = "approved";
     for (const i of s.intents[run.id] ?? []) if (i.status === "proposed") i.status = "approved";
     for (const i of s.tiers[run.id] ?? []) if (i.status === "proposed") i.status = "approved";
@@ -303,17 +330,22 @@ export const handlers = [
   http.get("/v1/protocols/{id}/deployments", ({ params }) =>
     HttpResponse.json(db().deployments.filter((d) => d.protocolId === params.id)),
   ),
-  http.get("/v1/protocols/{id}/overview", async ({ params }) => {
+  http.get("/v1/protocols/{id}/overview", async ({ params, request }) => {
     await delay(LAT);
+    if (!userFrom(request)) return err(401, "UNAUTHENTICATED", "Sign in first");
     const p = protocolOr404(params.id);
     if (!p) return err(404, "NOT_FOUND", "Protocol not found");
     return HttpResponse.json(overview(p) as never);
   }),
   http.get("/v1/protocols/{id}/events", async ({ params, request }) => {
     await delay(LAT);
-    const kind = new URL(request.url).searchParams.get("kind");
-    const items = (db().events[params.id] ?? []).filter((e) => !kind || e.kind === kind);
-    return HttpResponse.json({ items, nextCursor: null });
+    const q = new URL(request.url).searchParams;
+    const kind = q.get("kind");
+    const limit = Math.min(100, Number(q.get("limit")) || 25);
+    const from = Number(q.get("cursor")) || 0;
+    const all = (db().events[params.id] ?? []).filter((e) => !kind || e.kind === kind);
+    const items = all.slice(from, from + limit);
+    return HttpResponse.json({ items, nextCursor: from + limit < all.length ? String(from + limit) : null });
   }),
   http.get("/v1/protocols/{id}/admin-queue", async ({ params }) => {
     await delay(LAT);
@@ -342,7 +374,7 @@ export const handlers = [
       const a = (s.adminQueue[body.protocolId] ?? []).find((x) => x.id === body.id);
       if (a) {
         a.status = "cancelled";
-        (s.events[body.protocolId] ??= []).unshift({ id: crypto.randomUUID(), kind: "admin_cancelled", txHash: a.txHash, invariantId: "tier2Timelock", asset: null, amount: null, data: { function: a.functionName, actionId: a.actionId }, ts: new Date().toISOString() });
+        (s.events[body.protocolId] ??= []).unshift({ id: crypto.randomUUID(), kind: "admin_cancelled", chainId: a.chainId, txHash: a.txHash, invariantId: "tier2Timelock", asset: null, amount: null, data: { function: a.functionName, actionId: a.actionId }, ts: new Date().toISOString() });
       }
     } else if (params.action === "release") {
       const e = (s.events[body.protocolId] ?? []).find((x) => x.id === body.id);

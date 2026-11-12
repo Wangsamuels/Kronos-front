@@ -5,19 +5,19 @@ import { NEAR_NETWORK } from "@/lib/env";
  * NEAR Wallet Selector, NEP-413 signMessage. The backend's /v1/auth/nonce is hex; it is used as the
  * 32-byte NEP-413 nonce (zero padded), the same way the backend rebuilds the payload.
  */
-export async function signNear(walletId: "meteor-wallet" | "my-near-wallet", nonceHex: string) {
+export async function signNear(walletId: "meteor-wallet" | "my-near-wallet", nonceHex: string, near: { message: string; recipient: string; network?: string }) {
   const [{ setupWalletSelector }, { setupMeteorWallet }, { setupMyNearWallet }] = await Promise.all([
     import("@near-wallet-selector/core"),
     import("@near-wallet-selector/meteor-wallet"),
     import("@near-wallet-selector/my-near-wallet"),
   ]);
-  const selector = await setupWalletSelector({ network: NEAR_NETWORK, modules: [setupMeteorWallet(), setupMyNearWallet()] });
+  const selector = await setupWalletSelector({ network: (near.network === "mainnet" || near.network === "testnet" ? near.network : NEAR_NETWORK), modules: [setupMeteorWallet(), setupMyNearWallet()] });
   const wallet = await selector.wallet(walletId);
   const nonce = new Uint8Array(32);
   const hex = nonceHex.match(/.{1,2}/g) ?? [];
   hex.slice(0, 32).forEach((b, i) => (nonce[i] = parseInt(b, 16)));
-  const message = "Prove control of this protocol to Kronos. This signature does not move funds.";
-  const recipient = window.location.host;
+  // message and recipient come from GET /v1/auth/providers; the backend rebuilds the same NEP-413 payload.
+  const { message, recipient } = near;
   const callbackUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
   sessionStorage.setItem("kronos.near.pending", JSON.stringify({ nonce: nonceHex, message, recipient, callbackUrl }));
   const signed = await wallet.signMessage({ message, recipient, nonce: nonce as unknown as Buffer, callbackUrl });

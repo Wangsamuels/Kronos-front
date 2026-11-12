@@ -10,6 +10,8 @@ import { Field, FormSection, PageHead, StepEyebrow } from "@/components/ui/Page"
 import { ArrowRight, Lock, Plus } from "@/components/ui/Icons";
 import { useCreateProtocol, useMeta, useSession } from "@/api/queries";
 import { errorMessage } from "@/api/errors";
+import { ensureToken } from "@/api/auth";
+import { openSignIn, savePendingSubmit } from "@/api/signin";
 import { ENABLED_CHAINS } from "@/lib/chains";
 import { ADDRESS_RE, normalizeUrl, repoError, websiteError } from "@/lib/validate";
 import { cn } from "@/lib/cn";
@@ -36,13 +38,20 @@ export function ConnectScreen() {
 
   const start = async () => {
     if (!formOk) return;
+    const body = {
+      websiteUrl: v.website ? normalizeUrl(v.website) : undefined,
+      repoUrl: normalizeUrl(v.repo),
+      chainId,
+      addresses: addresses.length ? addresses : undefined,
+    };
+    // Signed out: keep the form, ask to sign in. The analysis starts by itself afterwards.
+    if (!(await ensureToken())) {
+      savePendingSubmit(body);
+      openSignIn({ reason: "submit" });
+      return;
+    }
     try {
-      const res = await create.mutateAsync({
-        websiteUrl: v.website ? normalizeUrl(v.website) : undefined,
-        repoUrl: normalizeUrl(v.repo),
-        chainId,
-        addresses: addresses.length ? addresses : undefined,
-      });
+      const res = await create.mutateAsync(body);
       router.push(`/p/${res.protocol.id}/analysis`);
     } catch {}
   };
@@ -57,7 +66,7 @@ export function ConnectScreen() {
       <span className={cn("block size-2 rounded-full", on ? "bg-text" : "bg-transparent")} />
     </span>
   );
-  const blocker = !signedIn ? "Sign in with GitHub to continue." : !formOk ? (repoError(v.repo) ? "Add a valid GitHub repo." : "Fix the highlighted fields.") : null;
+  const blocker = !formOk ? (repoError(v.repo) ? "Add a valid GitHub repo." : "Fix the highlighted fields.") : !signedIn ? "You’ll be asked to sign in first. The form is kept." : null;
 
   return (
     <OnboardingShell step="link" wide>
@@ -134,13 +143,13 @@ export function ConnectScreen() {
 
           {available ? (
             <>
-              <FormSection n="03" title="Access" hint="Asked only here, and only what the analysis needs.">
+              <FormSection n="03" title="Access" hint="One account can hold GitHub and a wallet. Link the second one here so they don’t become two accounts.">
                 <AuthPanel chainId={chainId} />
               </FormSection>
 
               <div className="grid gap-3 border-t border-line pt-8 md:pl-[4.5rem]">
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                  <Button size="lg" onClick={start} disabled={!formOk || !signedIn} busy={create.isPending}>
+                  <Button size="lg" onClick={start} disabled={!formOk} busy={create.isPending}>
                     Start analysis
                     <ArrowRight />
                   </Button>

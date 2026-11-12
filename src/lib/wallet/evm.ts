@@ -35,17 +35,28 @@ async function ensureConnected(connectorId?: string, chainId?: number): Promise<
   return a;
 }
 
-/** Sign-In With Ethereum: proves the team controls the protocol's deployer/admin key. */
-export async function signSiwe(nonce: string, chainId: number, connectorId?: string) {
+export interface SiweParams {
+  domain: string;
+  uri: string;
+  statement: string;
+  chainIds: number[];
+}
+
+/**
+ * Sign-In With Ethereum (EIP-4361). domain, uri and statement come from GET /v1/auth/providers: the
+ * backend rejects a message built for any other domain.
+ */
+export async function signSiwe(nonce: string, siwe: SiweParams, preferredChainId?: number, connectorId?: string) {
+  const chainId = preferredChainId && siwe.chainIds.includes(preferredChainId) ? preferredChainId : siwe.chainIds[0] ?? baseSepolia.id;
   const address = await ensureConnected(connectorId, chainId);
   const message = createSiweMessage({
     address,
     chainId,
-    domain: window.location.host,
-    uri: window.location.origin,
+    domain: siwe.domain,
+    uri: siwe.uri,
     nonce,
     version: "1",
-    statement: "Prove control of this protocol to Kronos. This signature does not move funds.",
+    statement: siwe.statement,
     issuedAt: new Date(),
   });
   const signature = await signMessage(wagmiConfig(), { message });

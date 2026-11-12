@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "./Wordmark";
+import { AuthLink } from "./auth/AuthLink";
 import { ATTACK_TESTS_URL, GITHUB_URL, X_URL } from "@/lib/links";
 
 const COLS = [
@@ -45,9 +46,15 @@ export function SiteFooter() {
                 <ul className="mt-4 grid gap-1">
                   {c.links.map((l) => (
                     <li key={l.label}>
-                      <Link href={l.href} className="inline-flex min-h-9 items-center text-15 text-text-2 transition-colors duration-k hover:text-text">
-                        {l.label}
-                      </Link>
+                      {l.href === "/p" ? (
+                        <AuthLink href={l.href} className="inline-flex min-h-9 items-center text-15 text-text-2 transition-colors duration-k hover:text-text">
+                          {l.label}
+                        </AuthLink>
+                      ) : (
+                        <Link href={l.href} className="inline-flex min-h-9 items-center text-15 text-text-2 transition-colors duration-k hover:text-text">
+                          {l.label}
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>

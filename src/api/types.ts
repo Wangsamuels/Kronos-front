@@ -30,6 +30,9 @@ export type Settings = Json<"/v1/protocols/{id}/settings", "get">;
 export type Me = Json<"/v1/me", "get">;
 export type Meta = Json<"/v1/meta", "get">;
 export type Session = Json<"/v1/auth/refresh", "post">;
+export type Providers = Json<"/v1/auth/providers", "get">;
+export type Attestation = Overview["attestations"][number];
+export type ChainDeployment = Overview["deployments"][number];
 export type WalletAuthBody = NonNullable<paths["/v1/auth/wallet"]["post"]["requestBody"]>["content"]["application/json"];
 
 /** Shapes the OpenAPI file leaves as `unknown`; mirrored from the backend's worker output. */

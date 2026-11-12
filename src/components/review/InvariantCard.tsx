@@ -12,12 +12,15 @@ import { Chevron } from "@/components/ui/Icons";
 /** Rule text, Solidity (Shiki, collapsible), param controls, evidence, approve/reject. */
 export function InvariantCard({
   inv,
+  highlight,
   locked,
   busy,
   onDecide,
   onSaveParams,
 }: {
   inv: Invariant;
+  /** The backend refused to approve the run because this one is undecided. */
+  highlight?: boolean;
   locked: boolean;
   busy?: boolean;
   onDecide: (status: "approved" | "rejected" | "proposed") => void;
@@ -34,7 +37,7 @@ export function InvariantCard({
   const needs = inv.needsReview && inv.status === "proposed";
 
   return (
-    <article className={cn("overflow-hidden rounded-panel border bg-surface", needs ? "border-queue/50" : "border-line-2")} aria-labelledby={`inv-${inv.id}`}>
+    <article id={`inv-card-${inv.id}`} className={cn("scroll-mt-28 overflow-hidden rounded-panel border bg-surface", highlight ? "border-queue shadow-[0_0_0_3px_rgb(var(--queue)/0.2)]" : needs ? "border-queue/50" : "border-line-2")} aria-labelledby={`inv-${inv.id}`}>
       {needs ? (
         <p className="flex items-center gap-2.5 border-b border-queue/30 bg-queue/[0.07] px-5 py-2.5 text-13 text-queue">
           <span aria-hidden className="block size-1.5 rounded-full bg-queue" />

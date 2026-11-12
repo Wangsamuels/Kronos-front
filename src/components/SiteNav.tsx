@@ -7,6 +7,7 @@ import { Wordmark } from "./Wordmark";
 import { ButtonLink } from "./ui/Button";
 import { GITHUB_URL } from "@/lib/links";
 import { ArrowRight, ArrowUpRight, Cross } from "./ui/Icons";
+import { AuthLink } from "./auth/AuthLink";
 
 const LINKS = [
   { href: "/#how-it-works", label: "How it works" },
@@ -43,9 +44,9 @@ export function SiteNav() {
           ))}
         </ul>
         <div className="ml-auto hidden items-center gap-2 md:flex">
-          <Link href="/p" className="hidden h-9 lg:inline-flex items-center rounded-ctl px-3 text-13 text-text-2 transition-colors duration-k hover:bg-surface-2 hover:text-text">
+          <AuthLink href="/p" className="hidden h-9 items-center rounded-ctl px-3 text-13 text-text-2 transition-colors duration-k hover:bg-surface-2 hover:text-text lg:inline-flex">
             Your protocols
-          </Link>
+          </AuthLink>
           <ButtonLink href="/connect" size="sm">
             Protect a protocol
             <ArrowRight className="size-3.5" />
@@ -72,7 +73,7 @@ export function SiteNav() {
               </div>
               <D.Description className="sr-only">Site navigation</D.Description>
               <ul className="mt-2 divide-y divide-line border-y border-line">
-                {[...LINKS, { href: "/p", label: "Your protocols" }].map((l, i) => (
+                {LINKS.map((l, i) => (
                   <li key={l.href}>
                     <D.Close asChild>
                       <Link href={l.href} className="flex h-14 items-center justify-between text-17 text-text">
@@ -82,6 +83,14 @@ export function SiteNav() {
                     </D.Close>
                   </li>
                 ))}
+                <li>
+                  <D.Close asChild>
+                    <AuthLink href="/p" className="flex h-14 items-center justify-between text-17 text-text">
+                      Your protocols
+                      <span className="font-mono text-11 text-text-3">0{LINKS.length + 1}</span>
+                    </AuthLink>
+                  </D.Close>
+                </li>
               </ul>
               <ButtonLink href="/connect" size="lg" className="mt-6 w-full">
                 Protect a protocol

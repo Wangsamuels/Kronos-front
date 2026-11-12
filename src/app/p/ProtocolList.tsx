@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
+import { useEffect } from "react";
 import { AppBar } from "@/components/SiteNav";
 import { ProtocolStatusPill } from "@/components/StatusPill";
-import { ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { openSignIn } from "@/api/signin";
 import { Eyebrow, PageHead } from "@/components/ui/Page";
 import { ArrowRight, Plus } from "@/components/ui/Icons";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
@@ -20,8 +22,13 @@ export function protocolHref(p: Protocol) {
 }
 
 export function ProtocolList() {
-  const { signedIn } = useSession();
+  const { token } = useSession();
   const q = useProtocols();
+  // Signed in (or out) since the last fetch: ask again rather than showing the old answer.
+  useEffect(() => {
+    void q.refetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
   const count = q.data?.items.length ?? 0;
   return (
     <div className="min-h-dvh">
@@ -42,8 +49,8 @@ export function ProtocolList() {
           {q.isLoading ? (
             <LoadingBlock lines={4} />
           ) : q.isError ? (
-            q.error instanceof ApiError && q.error.status === 401 && !signedIn ? (
-              <EmptyState title="Sign in to see your protocols" action={<ButtonLink href="/connect">Sign in and link a protocol</ButtonLink>}>
+            q.error instanceof ApiError && q.error.status === 401 ? (
+              <EmptyState title="Sign in to see your protocols" action={<Button onClick={() => openSignIn({ returnTo: "/p", reason: "protocols" })}>Sign in</Button>}>
                 Protocols are tied to the GitHub account that linked them.
               </EmptyState>
             ) : (

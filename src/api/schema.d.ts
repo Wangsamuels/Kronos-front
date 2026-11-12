@@ -38,6 +38,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sign-in options for the sign-in / sign-up modal, with the exact values wallets must sign */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            github: {
+                                enabled: boolean;
+                                startUrl: string;
+                                appInstallUrl: string | null;
+                            };
+                            siwe: {
+                                enabled: boolean;
+                                domain: string;
+                                uri: string;
+                                chainIds: number[];
+                                statement: string;
+                            };
+                            near: {
+                                enabled: boolean;
+                                network: string;
+                                recipient: string;
+                                message: string;
+                            };
+                            dev: {
+                                enabled: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/github": {
         parameters: {
             query?: never;
@@ -45,10 +103,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Start GitHub OAuth */
+        /** Start GitHub sign-in / sign-up. returnTo = frontend path to land on afterwards; linkToken = add GitHub to a signed-in account */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    returnTo?: string;
+                    linkToken?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -79,10 +140,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Install the Kronos GitHub App */
+        /** Install the Kronos GitHub App (pass linkToken to attach it to the signed-in account) */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    returnTo?: string;
+                    linkToken?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -121,6 +185,8 @@ export interface paths {
                     state?: string;
                     installation_id?: number;
                     setup_action?: string;
+                    error?: string;
+                    error_description?: string;
                 };
                 header?: never;
                 path?: never;
@@ -152,7 +218,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Nonce for SIWE / NEAR sign-in */
+        /** Single-use nonce (10 min) for SIWE / NEAR sign-in */
         get: {
             parameters: {
                 query?: never;
@@ -192,7 +258,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** SIWE or NEAR signature. Links the wallet to the signed-in user, or signs in by wallet. */
+        /** SIWE or NEAR (NEP-413) signature. Signs in or signs up by wallet; with a bearer token, links the wallet to that account. */
         post: {
             parameters: {
                 query?: never;
@@ -214,6 +280,7 @@ export interface paths {
                         publicKey: string;
                         signature: string;
                         message: string;
+                        /** @description the hex nonce from /auth/nonce (its 32 bytes are the NEP-413 nonce) */
                         nonce: string;
                         recipient: string;
                         callbackUrl?: string;
@@ -231,6 +298,56 @@ export interface paths {
                             accessToken: string;
                             expiresIn: number;
                             userId: string;
+                            /** @description true when this sign-in created the account (sign-up) */
+                            isNewUser: boolean;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange the one-time `code` from the GitHub callback for a session; sets the refresh cookie on the calling origin (use through the frontend's /api rewrite) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            accessToken: string;
+                            expiresIn: number;
+                            userId: string;
+                            /** @description true when this sign-in created the account (sign-up) */
+                            isNewUser: boolean;
                         };
                     };
                 };
@@ -251,7 +368,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate the httpOnly refresh cookie, get a new access token */
+        /** Rotate the httpOnly refresh cookie and get a new access token (call on app load to restore the session) */
         post: {
             parameters: {
                 query?: never;
@@ -271,6 +388,8 @@ export interface paths {
                             accessToken: string;
                             expiresIn: number;
                             userId: string;
+                            /** @description true when this sign-in created the account (sign-up) */
+                            isNewUser: boolean;
                         };
                     };
                 };
@@ -353,6 +472,8 @@ export interface paths {
                             accessToken: string;
                             expiresIn: number;
                             userId: string;
+                            /** @description true when this sign-in created the account (sign-up) */
+                            isNewUser: boolean;
                         };
                     };
                 };
@@ -649,6 +770,64 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/protocols/{id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer a protocol to another Kronos user (owner only), e.g. from a dev/operator account to your GitHub account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        toUserId: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            name: string;
+                            websiteUrl: string | null;
+                            repoUrl: string | null;
+                            chainId: number;
+                            addresses: string[];
+                            type: string;
+                            /** @enum {string} */
+                            status: "draft" | "analyzing" | "review" | "approved" | "integrating" | "live" | "paused" | "unsupported";
+                            latestRunId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -1430,6 +1609,7 @@ export interface paths {
                                 createdAt: string;
                                 updatedAt: string;
                             };
+                            /** @description most recent deployment (kept for compatibility; see deployments) */
                             deployment: {
                                 id: string;
                                 protocolId: string;
@@ -1443,6 +1623,20 @@ export interface paths {
                                 verifiedAt: string | null;
                                 createdAt: string;
                             } | null;
+                            /** @description latest deployment per chain */
+                            deployments: {
+                                id: string;
+                                protocolId: string;
+                                packageId: string | null;
+                                chainId: number;
+                                guardAddress: string;
+                                timelockAddress: string | null;
+                                registryAddress: string | null;
+                                verified: boolean;
+                                checks?: unknown;
+                                verifiedAt: string | null;
+                                createdAt: string;
+                            }[];
                             stats24h: {
                                 blocked: number;
                                 queued: number;
@@ -1450,13 +1644,24 @@ export interface paths {
                                 adminQueued: number;
                                 alerts: number;
                             };
+                            /** @description most recent attestation on any chain */
                             attestation: {
+                                chainId: number;
                                 block: number;
                                 ageSeconds: number;
                                 oracleOk: boolean;
                                 solvencyOk: boolean;
                                 postedTx: string | null;
                             } | null;
+                            /** @description latest attestation per chain */
+                            attestations: {
+                                chainId: number;
+                                block: number;
+                                ageSeconds: number;
+                                oracleOk: boolean;
+                                solvencyOk: boolean;
+                                postedTx: string | null;
+                            }[];
                             queuedOutflow: {
                                 asset: string;
                                 amount: string;
@@ -1509,6 +1714,7 @@ export interface paths {
                             items: {
                                 id: string;
                                 kind: string;
+                                chainId: number | null;
                                 txHash: string | null;
                                 invariantId: string | null;
                                 asset: string | null;
@@ -1631,7 +1837,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Alert channels and desired outflow thresholds. Loosening a threshold on-chain is a Tier 1 timelock action; the monitor alerts against these values and can only tighten on its own. */
+        /** Alert channels (used by the monitor), auto-tighten on/off, and the team's desired outflow thresholds (recorded here; changing them on-chain is a Tier 1 timelock action — the monitor itself can only tighten). */
         patch: {
             parameters: {
                 query?: never;

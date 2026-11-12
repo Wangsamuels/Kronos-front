@@ -5,7 +5,7 @@
  * that continue after the analysis events, exactly like the backend's run_events table.
  */
 import type { AdminAction, Deployment, IntentSchema, Invariant, Package, Protocol, ProtocolEvent, Run, RunEvent, Settings, Tier, VerifyCheck } from "@/api/types";
-import { CONFIG_HASH, ENTRYPOINTS, INVARIANTS, TEST_REPORT, THRESHOLDS, TIER_PLAN, USDC, WETH, BASE_SEPOLIA, intentFor, packageFiles } from "./data";
+import { CONFIG_HASH, ENTRYPOINTS, INVARIANTS, TEST_REPORT, THRESHOLDS, TIER_PLAN, USDC, WETH, AURORA_TESTNET, BASE_SEPOLIA, intentFor, packageFiles } from "./data";
 
 type Effect =
   | { kind: "run"; status?: Run["status"]; stage?: string; finished?: boolean }
@@ -40,7 +40,7 @@ export interface MockState {
   waitlist: { email: string; protocolType: string }[];
 }
 
-const KEY = "kronos.mock.v3";
+const KEY = "kronos.mock.v4";
 const uuid = () => crypto.randomUUID();
 const now = () => Date.now();
 const iso = (t = now()) => new Date(t).toISOString();
@@ -79,7 +79,7 @@ export function resetMockDb() {
 
 function empty(): MockState {
   return {
-    version: 3,
+    version: 4,
     users: {},
     protocols: [],
     runs: {},
@@ -373,22 +373,25 @@ export function verifyDeployment(p: Protocol, body: { chainId: number; guardAddr
     verifiedAt: verified ? iso() : null,
     createdAt: iso(),
   };
+  // Registering again on the same chain replaces the earlier entry.
+  s.deployments = s.deployments.filter((x) => !(x.protocolId === p.id && x.chainId === d.chainId));
   s.deployments.unshift(d);
   if (verified) {
     p.status = "live";
     p.updatedAt = iso();
-    seedMonitoring(s, p.id, d.guardAddress);
+    if (!s.events[p.id]?.length) seedMonitoring(s, p.id, d.chainId);
   }
   save();
   return d;
 }
 
-function seedMonitoring(s: MockState, protocolId: string, _guard: string) {
+function seedMonitoring(s: MockState, protocolId: string, chainId: number) {
   const h = 3600_000;
   const t = now();
   const ev = (minsAgo: number, kind: string, extra: Partial<ProtocolEvent>): ProtocolEvent => ({
     id: uuid(),
     kind,
+    chainId,
     txHash: `0x${Array.from({ length: 64 }, (_, i) => "0123456789abcdef"[(minsAgo * 7 + i * 13 + kind.length) % 16]).join("")}`,
     invariantId: null,
     asset: null,
@@ -398,23 +401,23 @@ function seedMonitoring(s: MockState, protocolId: string, _guard: string) {
     ...extra,
   });
   s.events[protocolId] = [
-    ev(3, "blocked", { invariantId: "checkOracle", asset: USDC, amount: "2400000", data: { function: "borrow", error: "OracleDeviation", from: "0x9f3e…71aa" } }),
-    ev(16, "queued", { asset: USDC, amount: "180000", invariantId: "outflowWindow", data: { function: "withdraw", claimId: "7", releaseAt: iso(t + 14 * 60_000) } }),
-    ev(48, "released", { asset: USDC, amount: "12500", invariantId: "outflowWindow", data: { function: "withdraw", claimId: "6", reason: "fresh attestation" } }),
+    ev(3, "blocked", { invariantId: "checkOracle", asset: USDC, amount: "2400000000000", data: { function: "borrow", error: "OracleDeviation", from: "0x9f3e…71aa" } }),
+    ev(16, "queued", { asset: USDC, amount: "180000000000", invariantId: "outflowWindow", data: { function: "withdraw", claimId: "7", releaseAt: iso(t + 14 * 60_000) } }),
+    ev(48, "released", { asset: USDC, amount: "12500000000", invariantId: "outflowWindow", data: { function: "withdraw", claimId: "6", reason: "fresh attestation" } }),
     ev(92, "admin_queued", { invariantId: "tier2Timelock", data: { function: "listMarket", actionId: 3, tier: 2, functionName: "listMarket(address,address,uint256)" } }),
-    ev(117, "blocked", { invariantId: "checkSharePrice", asset: USDC, amount: "890000", data: { function: "borrow", error: "SharePriceDelta" } }),
-    ev(145, "released", { asset: USDC, amount: "64200", data: { function: "repay" } }),
-    ev(5 * 60, "blocked", { invariantId: "checkHealth", asset: WETH, amount: "41", data: { function: "withdraw", error: "HealthTooLow" } }),
+    ev(117, "blocked", { invariantId: "checkSharePrice", asset: USDC, amount: "890000000000", data: { function: "borrow", error: "SharePriceDelta" } }),
+    ev(145, "released", { asset: USDC, amount: "64200000000", data: { function: "repay" } }),
+    ev(5 * 60, "blocked", { invariantId: "checkHealth", asset: WETH, amount: "41000000000000000000", data: { function: "withdraw", error: "HealthTooLow" } }),
     ev(9 * 60, "alert", { data: { title: "Outflow at 71% of the 24h window", function: "withdraw" } }),
-    ev(13 * 60, "blocked", { invariantId: "checkOracle", asset: USDC, amount: "1100000", data: { function: "borrow", error: "OracleDeviation" } }),
+    ev(13 * 60, "blocked", { invariantId: "checkOracle", asset: USDC, amount: "1100000000000", data: { function: "borrow", error: "OracleDeviation" } }),
     ev(17 * 60, "admin_cancelled", { invariantId: "tier2Timelock", data: { function: "setOracle", actionId: 2, functionName: "setOracle(address,address)" } }),
-    ev(21 * 60, "blocked", { invariantId: "checkCap", asset: WETH, amount: "300", data: { function: "deposit", error: "CapExceeded" } }),
-    ev(23 * 60, "blocked", { invariantId: "intentBounds", asset: USDC, amount: "50000", data: { function: "borrow", error: "IntentBoundsExceeded" } }),
+    ev(21 * 60, "blocked", { invariantId: "checkCap", asset: WETH, amount: "300000000000000000000", data: { function: "deposit", error: "CapExceeded" } }),
+    ev(23 * 60, "blocked", { invariantId: "intentBounds", asset: USDC, amount: "50000000000", data: { function: "borrow", error: "IntentBoundsExceeded" } }),
   ];
   s.adminQueue[protocolId] = [
     {
       id: uuid(),
-      chainId: BASE_SEPOLIA,
+      chainId,
       actionId: 3,
       target: "0x5b2e…41c9",
       selector: "0x3e4f5a6b",
@@ -427,7 +430,7 @@ function seedMonitoring(s: MockState, protocolId: string, _guard: string) {
     },
   ];
   s.settings[protocolId] = {
-    thresholds: { [USDC]: { threshold: "250000", staleLimit: "50000" }, [WETH]: { threshold: "120", staleLimit: "20" } },
+    thresholds: { [USDC]: { threshold: "250000000000", staleLimit: "50000000000" }, [WETH]: { threshold: "120000000000000000000", staleLimit: "20000000000000000000" } },
     alerts: { webhookUrl: null, telegramChatId: null, discordWebhookUrl: null },
     autoTighten: true,
   };
@@ -477,21 +480,40 @@ function seedLiveDemo(s: MockState) {
     verifiedAt: t,
     createdAt: t,
   });
-  seedMonitoring(s, p.id, "");
+  // The sample is live on both chains, like the real MiniLend demo: same addresses, one card each.
+  s.deployments.push({ ...s.deployments[s.deployments.length - 1]!, id: uuid(), chainId: AURORA_TESTNET });
+  seedMonitoring(s, p.id, BASE_SEPOLIA);
+  // A few of the sample's events happened on Aurora, so the chain chips and filter have both.
+  (s.events[p.id] ?? []).forEach((e, i) => {
+    if (i % 4 === 2) e.chainId = AURORA_TESTNET;
+  });
 }
 
 export function overview(p: Protocol) {
   const s = db();
-  const d = s.deployments.find((x) => x.protocolId === p.id && x.verified) ?? s.deployments.find((x) => x.protocolId === p.id);
+  const mine = s.deployments.filter((x) => x.protocolId === p.id);
+  // latest deployment per chain
+  const deployments = [...new Map(mine.map((d) => [d.chainId, d] as const).reverse()).values()];
+  const d = mine.find((x) => x.verified) ?? mine[0];
   const evs = (s.events[p.id] ?? []).filter((e) => now() - new Date(e.ts).getTime() < 86400_000);
   const count = (k: string) => evs.filter((e) => e.kind === k).length;
   const queued = evs.filter((e) => e.kind === "queued" && !(e.data as { released?: boolean })?.released);
-  const ageSeconds = Math.round(((now() / 1000) % 24) + 2);
+  const att = (chainId: number, i: number) => ({
+    chainId,
+    block: (chainId === AURORA_TESTNET ? 231_400_000 : 18_240_312) + Math.floor((now() / 1000 - 1762700000) / 2),
+    ageSeconds: Math.round(((now() / 1000 + i * 9) % 24) + 2 + i * 31),
+    oracleOk: true,
+    solvencyOk: true,
+    postedTx: `0x3a9f1c0e2d4b6a8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a2b4d6${i}`,
+  });
+  const attestations = deployments.filter((x) => x.verified).map((x, i) => att(x.chainId, i));
   return {
     protocol: p,
     deployment: d ?? null,
+    deployments,
     stats24h: { blocked: count("blocked"), queued: count("queued"), released: count("released"), adminQueued: count("admin_queued"), alerts: count("alert") },
-    attestation: { block: 18240312 + Math.floor((now() / 1000 - 1762700000) / 2), ageSeconds, oracleOk: true, solvencyOk: true, postedTx: "0x3a9f1c0e2d4b6a8c0e2f4a6b8d0c2e4f6a8b0d2c4e6f8a0b2d4c6e8f0a2b4d6c" },
+    attestation: attestations[0] ?? null,
+    attestations,
     queuedOutflow: queued.map((e) => ({ asset: e.asset ?? USDC, amount: e.amount ?? "0", claims: 1 })),
     pendingAdminActions: (s.adminQueue[p.id] ?? []).filter((a) => a.status === "queued").length,
   };

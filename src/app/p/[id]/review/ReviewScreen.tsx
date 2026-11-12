@@ -1,7 +1,7 @@
 "use client";
 import * as Tabs from "@radix-ui/react-tabs";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { InvariantCard } from "@/components/review/InvariantCard";
 import { IntentCard } from "@/components/review/IntentCard";
@@ -13,7 +13,7 @@ import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { useApprove, usePatchIntent, usePatchInvariant, usePatchTier, useProtocol, useResults } from "@/api/queries";
 import { lastEventIdFor, openStream } from "@/api/stream";
-import { errorMessage } from "@/api/errors";
+import { ApiError, errorMessage } from "@/api/errors";
 import type { Entrypoint } from "@/api/types";
 import { num } from "@/lib/format";
 
@@ -27,6 +27,8 @@ export function ReviewScreen({ id }: { id: string }) {
   const patchIntent = usePatchIntent(runId);
   const patchTier = usePatchTier(runId);
   const approve = useApprove(runId, id);
+  const [tab, setTab] = useState("invariants");
+  const [needsDecision, setNeedsDecision] = useState<string[]>([]);
 
   const data = results.data;
   const locked = data ? data.run.status !== "review" : true;
@@ -50,6 +52,23 @@ export function ReviewScreen({ id }: { id: string }) {
       toast({ title: "approved · packaging", body: from ? `Following the live log after event #${from}.` : "Following the live log.", tone: "pass" });
       router.push(`/p/${id}/analysis`);
     } catch (e) {
+      // 409 with details.invariantIds: flagged invariants still undecided. Take the reader to the first.
+      const ids = e instanceof ApiError && e.status === 409 ? ((e.details as { invariantIds?: string[] } | undefined)?.invariantIds ?? []) : [];
+      if (ids.length) {
+        setNeedsDecision(ids);
+        setTab("invariants");
+        toast({ title: `${ids.length} invariant${ids.length > 1 ? "s" : ""} still need a decision`, body: "Approve or reject each highlighted rule, then approve again.", tone: "queue" });
+        requestAnimationFrame(() => document.getElementById(`inv-card-${ids[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+        void results.refetch();
+        return;
+      }
+      if (e instanceof ApiError && e.status === 409) {
+        // "At least one invariant must be approved", "Run already approved"
+        toast({ title: "Can’t approve yet", body: e.message, tone: "queue" });
+        void results.refetch();
+        void protocol.refetch();
+        return;
+      }
       toast({ title: "Approval failed", body: errorMessage(e), tone: "block" });
     }
   };
@@ -138,7 +157,7 @@ export function ReviewScreen({ id }: { id: string }) {
         </div>
       </section>
 
-      <Tabs.Root defaultValue="invariants" className="mt-10">
+      <Tabs.Root value={tab} onValueChange={setTab} className="mt-10">
         <Tabs.List aria-label="Review sections" className="flex gap-1 overflow-x-auto border-b border-line">
           {[
             ["invariants", "Invariants", invariants.length, undecided.length ? `${undecided.length} to decide` : null],
@@ -167,6 +186,7 @@ export function ReviewScreen({ id }: { id: string }) {
             <InvariantCard
               key={`${inv.id}-${JSON.stringify(inv.params)}`}
               inv={inv}
+              highlight={needsDecision.includes(inv.id) && inv.status === "proposed"}
               locked={locked}
               busy={patchInv.isPending && patchInv.variables?.id === inv.id}
               onDecide={(status) => patchInv.mutate({ id: inv.id, status }, { onError })}
@@ -200,7 +220,17 @@ export function ReviewScreen({ id }: { id: string }) {
               <EmptyState title="No privileged functions">Nothing in this protocol is access-controlled, so there is nothing to timelock.</EmptyState>
             </div>
           ) : (
-            <TierTable tiers={data.tiers} entries={entries} locked={locked} onChange={(t, tier) => patchTier.mutate({ id: t.id, tier }, { onError })} />
+            <TierTable tiers={data.tiers} entries={entries} locked={locked} onChange={(t, tier) =>
+                patchTier.mutate(
+                  { id: t.id, tier },
+                  {
+                    onError: (e) =>
+                      e instanceof ApiError && e.status === 409
+                        ? toast({ title: "This tier is a hard rule", body: `${e.message}. It can be raised, never lowered.`, tone: "queue" })
+                        : onError(e),
+                  },
+                )
+              } />
           )}
           <p className="mt-4 max-w-[44rem] text-13 text-text-3">Safer is instant, riskier waits: Tier 0 instant (tighten only), Tier 1 48 hours, Tier 2 7 days, Tier 3 14 days plus an independent co-sign. Hard rules can only be made stricter.</p>
         </Tabs.Content>

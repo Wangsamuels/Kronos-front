@@ -34,6 +34,10 @@ export function useSession() {
 export const useMeta = () =>
   useQuery({ queryKey: qk.meta, queryFn: () => unwrap(api.GET("/v1/meta")), staleTime: 5 * 60_000 });
 
+/** Sign-in options and the exact values wallets must sign. */
+export const useProviders = () =>
+  useQuery({ queryKey: ["providers"] as const, queryFn: () => unwrap(api.GET("/v1/auth/providers")), staleTime: 5 * 60_000 });
+
 export function useMe() {
   const { token } = useSession();
   return useQuery({
@@ -90,7 +94,8 @@ export const useOverview = (id: string) =>
   useQuery({
     queryKey: qk.overview(id),
     queryFn: () => unwrap(api.GET("/v1/protocols/{id}/overview", { params: { path: { id } } })),
-    refetchInterval: 10_000,
+    // No event stream for the dashboard: poll every 15s. React Query pauses this while the tab is hidden.
+    refetchInterval: 15_000,
   });
 
 export const useEvents = (id: string, kind?: string) =>
@@ -98,7 +103,7 @@ export const useEvents = (id: string, kind?: string) =>
     queryKey: qk.events(id, kind),
     queryFn: () =>
       unwrap(api.GET("/v1/protocols/{id}/events", { params: { path: { id }, query: { limit: 100, ...(kind ? { kind } : {}) } } })),
-    refetchInterval: 10_000,
+    refetchInterval: 15_000,
     placeholderData: keepPreviousData,
   });
 
@@ -106,7 +111,7 @@ export const useAdminQueue = (id: string) =>
   useQuery({
     queryKey: qk.adminQueue(id),
     queryFn: () => unwrap(api.GET("/v1/protocols/{id}/admin-queue", { params: { path: { id }, query: { status: "queued" } } })),
-    refetchInterval: 10_000,
+    refetchInterval: 15_000,
   });
 
 export const useSettings = (id: string) =>

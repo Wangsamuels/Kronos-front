@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useSyncExternalStore } from "react";
-import { api, apiUrl, unwrap } from "./client";
+import { api, streamUrl, unwrap } from "./client";
 import { ensureToken, refresh } from "./auth";
 import { mockReady } from "./mockReady";
 import type { RunEvent } from "./types";
@@ -109,7 +109,7 @@ export async function openStream(runId: string, opts: { resume?: boolean } = {})
   await mockReady;
   const token = await ensureToken();
   if (s.gen !== gen) return; // superseded by a newer open/close
-  const url = new URL(apiUrl(`/v1/analyses/${runId}/stream`), window.location.origin);
+  const url = new URL(streamUrl(`/v1/analyses/${runId}/stream`), window.location.origin);
   if (token) url.searchParams.set("token", token);
   if (from > 0) url.searchParams.set("lastEventId", String(from));
 

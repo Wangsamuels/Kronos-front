@@ -220,8 +220,8 @@ export const TEST_REPORT: Omit<NonNullable<TestReport>, "id"> = {
 export const THRESHOLDS = {
   source: "p99.9 of 90 days of net outflow",
   assets: [
-    { asset: USDC, symbol: "USDC", threshold: "250000", p999: "212400", staleLimit: "50000" },
-    { asset: WETH, symbol: "WETH", threshold: "120", p999: "96", staleLimit: "20" },
+    { asset: USDC, symbol: "USDC", threshold: "250000000000", p999: "212400000000", staleLimit: "50000000000" },
+    { asset: WETH, symbol: "WETH", threshold: "120000000000000000000", p999: "96000000000000000000", staleLimit: "20000000000000000000" },
   ],
 };
 

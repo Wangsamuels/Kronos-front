@@ -15,7 +15,7 @@ import { ErrorState, LoadingBlock } from "@/components/ui/States";
 import { deriveCounters, derivePhase, PIPELINE } from "@/components/analysis/derive";
 import { qk, useProtocol, useReanalyze, useResults, useRun } from "@/api/queries";
 import { openStream, useAnalysisStream } from "@/api/stream";
-import { errorMessage } from "@/api/errors";
+import { ApiError } from "@/api/errors";
 
 export function AnalysisScreen({ id }: { id: string }) {
   const router = useRouter();
@@ -23,7 +23,8 @@ export function AnalysisScreen({ id }: { id: string }) {
   const protocol = useProtocol(id, { poll: 15_000 });
   const runId = protocol.data?.latestRunId;
   const stream = useAnalysisStream(runId);
-  const run = useRun(runId, stream.status === "open" ? 10_000 : undefined);
+  // The log is the live source. Without it (connection lost), fall back to polling the run every 5s.
+  const run = useRun(runId, stream.status === "open" ? 10_000 : stream.status === "unreachable" || stream.status === "error" || stream.status === "connecting" ? 5_000 : undefined);
   const phase = derivePhase(stream.events, run.data?.status, protocol.data?.status);
   const counters = useMemo(() => deriveCounters(stream.events), [stream.events]);
   const results = useResults(phase === "review" || phase === "packaging" || phase === "packaged" ? runId : null);
@@ -38,9 +39,15 @@ export function AnalysisScreen({ id }: { id: string }) {
   if (protocol.isError) return <OnboardingShell step="analysis" protocolId={id} wide><ErrorState what="this protocol" error={protocol.error} onRetry={() => protocol.refetch()} /></OnboardingShell>;
 
   const retry = async () => {
-    await reanalyze.mutateAsync();
+    try {
+      await reanalyze.mutateAsync();
+    } catch (e) {
+      // 409: an analysis is already running. Reloading the protocol opens that one.
+      if (!(e instanceof ApiError && e.status === 409)) return;
+    }
     await qc.invalidateQueries({ queryKey: qk.protocol(id) });
   };
+  const runError = (run.data?.error ?? null) as { code?: string; message?: string } | null;
 
   const title =
     phase === "packaging" ? "Building the guard package" : phase === "packaged" ? "Package ready" : phase === "unsupported" ? "Not a lending protocol (yet)" : phase === "review" ? "Ready for review" : phase === "failed" ? "Analysis failed" : "Live analysis";
@@ -154,10 +161,13 @@ export function AnalysisScreen({ id }: { id: string }) {
           {phase === "failed" ? (
             <Outcome tone="block" word={`failed at ${stageLabel(failedStage ?? run.data?.stage ?? "unknown").toLowerCase()}`} role="alert">
               <p className="text-17 font-medium text-text">The analysis didn’t finish.</p>
-              <p className="mt-1.5 break-words font-mono text-13 text-text-2">{errorEv?.message ?? errorMessage((run.data?.error as { message?: string } | undefined)?.message ?? "Analysis failed")}</p>
+              <p className="mt-1.5 break-words font-mono text-13 text-text-2">
+                {runError?.code ? <span className="mr-2 text-block">{runError.code}</span> : null}
+                {runError?.message ?? errorEv?.message ?? "Analysis failed"}
+              </p>
               <Button className="mt-5" variant="secondary" onClick={retry} busy={reanalyze.isPending}>
                 <Refresh className="size-3.5" />
-                Run it again
+                Re-run
               </Button>
             </Outcome>
           ) : null}

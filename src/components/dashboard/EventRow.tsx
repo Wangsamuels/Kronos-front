@@ -1,7 +1,11 @@
 import type { ProtocolEvent } from "@/api/types";
 import { ArrowUpRight } from "@/components/ui/Icons";
-import { txUrl } from "@/lib/chains";
-import { amount, clockTime, short } from "@/lib/format";
+import { chainName, txUrl } from "@/lib/chains";
+
+/** "Aurora testnet" -> "Aurora", "Base Sepolia" -> "Base": the chip on each activity row. */
+const chainShort = (id: number) => chainName(id).split(" ")[0] ?? String(id);
+import { clockTime, short } from "@/lib/format";
+import { formatAmount } from "@/lib/tokens";
 import { cn } from "@/lib/cn";
 
 export function eventAction(e: ProtocolEvent) {
@@ -11,21 +15,29 @@ export function eventAction(e: ProtocolEvent) {
 }
 
 /** Activity feed row: time, verdict dot + word, action, amount, invariant, tx link to the explorer. */
-export function EventRow({ e, chainId }: { e: ProtocolEvent; chainId: number }) {
+export function EventRow({ e, chainId, showChain }: { e: ProtocolEvent; chainId: number; showChain?: boolean }) {
+  const d = (e.data ?? {}) as { reason?: string; message?: string; error?: string };
+  // The line: the invariant that fired, then why (data.reason or data.message).
+  const why = [e.invariantId, d.reason ?? d.message ?? d.error].filter(Boolean).join(" · ") || "—";
   const url = e.txHash ? txUrl(chainId, e.txHash) : undefined;
-  const tag = e.kind === "blocked" || e.kind === "alert" ? "k-tag-block" : e.kind.includes("queued") ? "k-tag-queue" : e.kind === "released" || e.kind === "admin_cancelled" || e.kind === "admin_executed" ? "k-tag-pass" : "k-tag-idle";
+  const tag =
+    e.kind === "blocked" || e.kind === "alert" ? "k-tag-block" : e.kind.includes("queued") || e.kind === "tightened" ? "k-tag-queue" : e.kind === "released" || e.kind === "admin_cancelled" || e.kind === "admin_executed" ? "k-tag-pass" : "k-tag-idle";
   return (
     <li className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-3.5 font-mono text-13 transition-colors duration-k last:border-b-0 hover:bg-surface-2/40 md:grid-cols-12 md:gap-x-4 md:px-5 md:py-3">
       <span className="k-tnum order-3 text-right text-text-3 md:order-none md:col-span-2 md:text-left" title={e.ts}>
         {clockTime(e.ts)}
       </span>
-      <span className="order-1 md:order-none md:col-span-2">
+      <span className="order-1 flex items-center gap-2 md:order-none md:col-span-2">
         <span className={cn("k-tag", tag)}>{e.kind.replace("_", " ")}</span>
+        {showChain ? <span className="rounded-[4px] border border-line px-1.5 text-[10px] uppercase leading-5 tracking-[0.04em] text-text-3 min-[520px]:hidden">{chainShort(chainId)}</span> : null}
       </span>
       <span className="order-2 truncate text-text md:order-none md:col-span-2">{eventAction(e)}</span>
-      <span className="k-tnum order-4 col-span-3 text-text md:order-none md:col-span-2">{amount(e.amount, e.asset)}</span>
-      <span className="order-5 col-span-2 truncate text-text-2 md:order-none md:col-span-2">{e.invariantId ?? "—"}</span>
-      <span className="order-6 truncate text-right text-text-3 md:order-none md:col-span-2">
+      <span className="k-tnum order-4 col-span-3 text-text md:order-none md:col-span-2">{formatAmount(e.amount, e.asset)}</span>
+      <span className="order-5 col-span-2 truncate text-text-2 md:order-none md:col-span-2" title={why}>
+        {why}
+      </span>
+      <span className="order-6 flex items-center justify-end gap-2 truncate text-text-3 md:order-none md:col-span-2">
+        {showChain ? <span className="hidden rounded-[4px] border border-line px-1.5 text-[10px] uppercase leading-5 tracking-[0.04em] text-text-3 min-[520px]:inline">{chainShort(chainId)}</span> : null}
         {url ? (
           <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 transition-colors duration-k hover:text-text">
             {short(e.txHash, 6, 4)}

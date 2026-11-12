@@ -7,6 +7,7 @@ import { startMocks } from "@/api/mockReady";
 import { ToastProvider } from "@/components/ui/Toast";
 import { USE_MOCKS } from "@/lib/env";
 import { ApiError } from "@/api/errors";
+import { AuthModal } from "@/components/auth/AuthModal";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [qc] = useState(
@@ -30,7 +31,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {/* reducedMotion="user": every animation becomes an instant state change under prefers-reduced-motion */}
       <MotionConfig reducedMotion="user" transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}>
         <TooltipProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            {children}
+            <AuthModal />
+          </ToastProvider>
         </TooltipProvider>
       </MotionConfig>
     </QueryClientProvider>

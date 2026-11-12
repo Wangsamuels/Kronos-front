@@ -31,7 +31,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {t.body ? <T.Description className="col-start-2 break-words text-13 text-text-2">{t.body}</T.Description> : null}
           </T.Root>
         ))}
-        <T.Viewport className="fixed bottom-4 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2 outline-none" />
+        <T.Viewport className="fixed right-4 top-20 z-[60] flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2 outline-none" />
       </T.Provider>
     </Ctx.Provider>
   );

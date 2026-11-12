@@ -4,6 +4,14 @@ import { useId, useState } from "react";
 import { cn } from "@/lib/cn";
 import { normalizeUrl, repoError, websiteError } from "@/lib/validate";
 import { Button } from "./ui/Button";
+import { api, unwrap } from "@/api/client";
+import { ensureToken } from "@/api/auth";
+import { errorMessage } from "@/api/errors";
+import { useMeta } from "@/api/queries";
+import { openSignIn, savePendingSubmit } from "@/api/signin";
+
+/** Base Sepolia: used when the homepage submits without the chain picker. */
+const DEFAULT_CHAIN_ID = 84532;
 import { ArrowRight, GitHubMark } from "./ui/Icons";
 
 export interface RepoValue {
@@ -39,6 +47,7 @@ export function RepoInput({
   variant?: "stacked" | "inline";
 }) {
   const router = useRouter();
+  const meta = useMeta();
   const [local, setLocal] = useState<RepoValue>({ website: "", repo: "" });
   const v = value ?? local;
   const set = (patch: Partial<RepoValue>) => {
@@ -58,10 +67,33 @@ export function RepoInput({
     if (websiteError(v.website) || repoError(v.repo)) return;
     const clean = { website: v.website ? normalizeUrl(v.website) : "", repo: normalizeUrl(v.repo) };
     if (onSubmit) return onSubmit(clean);
-    const q = new URLSearchParams();
-    if (clean.website) q.set("website", clean.website);
-    q.set("repo", clean.repo);
-    router.push(`/connect?${q.toString()}`);
+    void launch(clean);
+  };
+
+  /**
+   * Launch mode (homepage): signed in, the analysis starts straight away. Signed out, the form is
+   * kept in sessionStorage and the sign-in modal opens; the submit runs by itself after sign-in.
+   */
+  const [launching, setLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
+  const launch = async (clean: RepoValue) => {
+    setLaunchError(null);
+    setLaunching(true);
+    const chainId = meta.data?.chains?.[0]?.chainId ?? DEFAULT_CHAIN_ID;
+    const body = { repoUrl: clean.repo, websiteUrl: clean.website || undefined, chainId };
+    try {
+      if (!(await ensureToken())) {
+        savePendingSubmit(body);
+        openSignIn({ reason: "submit" });
+        return;
+      }
+      const res = await unwrap(api.POST("/v1/protocols", { body }));
+      router.push(`/p/${res.protocol.id}/analysis`);
+    } catch (e) {
+      setLaunchError(errorMessage(e));
+    } finally {
+      setLaunching(false);
+    }
   };
 
   /** Paste detection: a GitHub URL pasted in the website field moves to the repo field. */
@@ -108,15 +140,15 @@ export function RepoInput({
               required
             />
           </div>
-          <Button type="submit" size="lg" busy={busy} className="shrink-0">
+          <Button type="submit" size="lg" busy={busy || launching} className="shrink-0">
             {submitLabel}
             <ArrowRight />
           </Button>
         </div>
         <div className="mt-3 min-h-5 text-13">
-          {rErr ? (
+          {rErr || launchError ? (
             <p id={`${id}-r-err`} role="alert" className="font-mono text-block">
-              {rErr}
+              {rErr ?? launchError}
             </p>
           ) : hint ? (
             <div className="text-text-3">{hint}</div>

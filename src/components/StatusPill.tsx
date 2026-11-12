@@ -26,7 +26,7 @@ export function StatusPill({ tone, children, className, dot }: { tone: PillTone;
 
 /** LIVE / PAUSED / ATTESTATION STALE / ANALYZING … for a protocol. */
 export function ProtocolStatusPill({ status, stale }: { status: string; stale?: boolean }) {
-  if (status === "live" && stale) return <StatusPill tone="block">Attestation stale</StatusPill>;
+  if (status === "live" && stale) return <StatusPill tone="queue">Live · attestation stale</StatusPill>;
   const map: Record<string, [PillTone, string]> = {
     live: ["pass", "Live"],
     paused: ["queue", "Paused"],

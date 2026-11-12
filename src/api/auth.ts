@@ -19,7 +19,32 @@ export function getToken() {
 export function setSession(token: string | null, expiresInSeconds = 900) {
   accessToken = token;
   expiresAt = token ? Date.now() + expiresInSeconds * 1000 : 0;
+  bootTried = true;
+  scheduleRefresh();
   listeners.forEach((l) => l());
+}
+
+/**
+ * Access tokens live 15 minutes. Refresh about a minute before expiry while the tab is visible; a
+ * hidden tab waits and refreshes the moment it is looked at again.
+ */
+let timer: ReturnType<typeof setTimeout> | null = null;
+let watching = false;
+function scheduleRefresh() {
+  if (typeof window === "undefined") return;
+  if (timer) clearTimeout(timer);
+  timer = null;
+  if (!accessToken) return;
+  const due = Math.max(5_000, expiresAt - Date.now() - 60_000);
+  timer = setTimeout(() => {
+    if (document.visibilityState === "visible") void refresh();
+  }, due);
+  if (!watching) {
+    watching = true;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && accessToken && Date.now() > expiresAt - 60_000) void refresh();
+    });
+  }
 }
 
 export function onAuthChange(fn: () => void) {
@@ -41,6 +66,7 @@ export function refresh(): Promise<string | null> {
     try {
       const res = await fetch(`${API_URL}/v1/auth/refresh`, { method: "POST", credentials: "include" });
       if (!res.ok) {
+        // 401 here means signed out. That is normal, not an error.
         setSession(null);
         return null;
       }
@@ -48,6 +74,7 @@ export function refresh(): Promise<string | null> {
       setSession(s.accessToken, s.expiresIn);
       return s.accessToken;
     } catch {
+      bootTried = true;
       return null;
     } finally {
       setTimeout(() => (refreshing = null), 0);
@@ -66,6 +93,33 @@ export async function ensureToken(): Promise<string | null> {
   }
   bootTried = true;
   return refresh();
+}
+
+/** True once the first refresh has answered, so "signed out" is known rather than assumed. */
+export function sessionKnown() {
+  return bootTried && !refreshing;
+}
+
+/**
+ * GitHub callback: swap the one-time code (60 seconds, single use) for a session. Called through this
+ * site's /api rewrite, so the refresh cookie lands on this domain.
+ */
+export async function exchangeCode(code: string): Promise<Session | null> {
+  await mockReady;
+  try {
+    const res = await fetch(`${API_URL}/v1/auth/exchange`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) return null;
+    const s = (await res.json()) as Session;
+    setSession(s.accessToken, s.expiresIn);
+    return s;
+  } catch {
+    return null;
+  }
 }
 
 export async function logout() {

@@ -1,10 +1,11 @@
 "use client";
 import createClient from "openapi-fetch";
-import { API_URL } from "@/lib/env";
+import { API_DIRECT_URL, API_URL } from "@/lib/env";
 import type { paths } from "./schema";
 import { ensureToken, getToken, refresh } from "./auth";
 import { mockReady } from "./mockReady";
 import { toApiError } from "./errors";
+import { getSignInRequest, openSignIn } from "./signin";
 
 /** fetch with bearer auth, one silent refresh + retry on 401, and the MSW start-up gate. */
 async function authFetch(input: Request): Promise<Response> {
@@ -14,10 +15,23 @@ async function authFetch(input: Request): Promise<Response> {
   if (token) input.headers.set("authorization", `Bearer ${token}`);
   const res = await fetch(input);
   if (res.status !== 401 || input.url.includes("/v1/auth/")) return res;
+  // One refresh, one retry. Still 401 after that means the session is gone: ask to sign in again.
   const next = await refresh();
-  if (!next) return res;
+  if (!next) {
+    askToSignIn();
+    return res;
+  }
   retry.headers.set("authorization", `Bearer ${next}`);
-  return fetch(retry);
+  const again = await fetch(retry);
+  if (again.status === 401) askToSignIn();
+  return again;
+}
+
+function askToSignIn() {
+  if (typeof window === "undefined" || getSignInRequest()) return;
+  // The callback page handles its own failures.
+  if (window.location.pathname.startsWith("/auth/")) return;
+  openSignIn({ reason: "expired" });
 }
 
 export const api = createClient<paths>({
@@ -35,6 +49,11 @@ export async function unwrap<T>(p: Promise<{ data?: T; error?: unknown; response
 
 export function apiUrl(path: string) {
   return `${API_URL}${path}`;
+}
+
+/** URL for the live log: straight to the backend when a direct URL is configured. */
+export function streamUrl(path: string) {
+  return `${API_DIRECT_URL}${path}`;
 }
 
 export function withToken(url: string) {

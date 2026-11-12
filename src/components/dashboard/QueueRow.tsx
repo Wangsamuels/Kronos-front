@@ -8,6 +8,7 @@ import { duration, short } from "@/lib/format";
 /** Queued item with ETA countdown and a guarded action (cancel / release) behind confirm + wallet signature. */
 export function QueueRow({
   badge,
+  chain,
   badgeTone = "queue",
   action,
   proposer,
@@ -20,6 +21,8 @@ export function QueueRow({
   danger = true,
 }: {
   badge: string;
+  /** Shown when the protocol is live on more than one chain. */
+  chain?: string;
   badgeTone?: "queue" | "block";
   action: string;
   proposer?: string | null;
@@ -43,6 +46,7 @@ export function QueueRow({
     <li className="grid grid-cols-2 items-center gap-x-4 gap-y-2.5 border-b border-line px-4 py-4 last:border-b-0 md:grid-cols-12 md:gap-3 md:px-5 md:py-3.5">
       <span className="col-span-2 md:col-span-3">
         <StatusPill tone={badgeTone}>{badge}</StatusPill>
+        {chain ? <span className="ml-2 font-mono text-11 uppercase tracking-[0.04em] text-text-3">{chain}</span> : null}
       </span>
       <span className="col-span-2 truncate font-mono text-15 text-text md:col-span-3 md:text-13" title={action}>
         {action}

@@ -1,162 +1,134 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { api, apiUrl, unwrap } from "@/api/client";
-import { rememberReturnTo, setSession, logout } from "@/api/auth";
-import { errorMessage } from "@/api/errors";
-import { qk, useDevLogin, useMe, useMeta, useSession, useWalletAuth } from "@/api/queries";
+import { logout } from "@/api/auth";
+import { qk, useMe, useProviders, useSession } from "@/api/queries";
+import { openSignIn } from "@/api/signin";
 import { USE_MOCKS } from "@/lib/env";
 import { short } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { Check, GitHubMark, Wallet } from "@/components/ui/Icons";
+import { githubStartUrl } from "@/components/auth/AuthModal";
+import { useWalletSignIn } from "@/components/auth/useWalletSignIn";
 
 /**
- * Auth, asked only here and only when needed: GitHub (OAuth + App install on the repo, needed for
- * analysis and the PR), then a wallet signature proving the team controls the protocol.
+ * Access on the Link screen. Signed out, it only points at the sign-in modal. Signed in, it is where
+ * a second method is linked to the same account: GitHub (and its App install) or a wallet.
  */
 export function AuthPanel({ chainId }: { chainId: number }) {
   const { signedIn } = useSession();
   const me = useMe();
-  const meta = useMeta();
-  const dev = useDevLogin();
-  const wallet = useWalletAuth();
+  const providers = useProviders();
   const toast = useToast();
   const qc = useQueryClient();
-  const [walletBusy, setWalletBusy] = useState<string | null>(null);
-  const [connectors, setConnectors] = useState<{ id: string; name: string }[]>([]);
+  const router = useRouter();
+  const here = () => window.location.pathname + window.location.search;
+  const wallet = useWalletSignIn(providers.data, async () => {
+    await qc.invalidateQueries({ queryKey: qk.me });
+    toast({ title: "Wallet linked", body: "It is now on the same account as your sign-in.", tone: "pass" });
+  });
 
-  useEffect(() => {
-    void import("@/lib/wallet/evm").then((m) => setConnectors(m.availableConnectors())).catch(() => {});
-    // MyNearWallet returns here with the signature in the hash.
-    void import("@/lib/wallet/near").then(async (m) => {
-      const r = m.takeNearRedirect();
-      if (r) await linkWallet(r);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const devLogin = async (login?: string) => {
-    try {
-      const s = await dev.mutateAsync(login);
-      setSession(s.accessToken, s.expiresIn);
-      await qc.invalidateQueries({ queryKey: qk.me });
-    } catch (e) {
-      toast({ title: "Sign-in failed", body: errorMessage(e), tone: "block" });
-    }
-  };
-
-  const github = () => {
-    if (USE_MOCKS) return void devLogin("demo");
-    rememberReturnTo(window.location.pathname + window.location.search);
-    window.location.href = apiUrl("/v1/auth/github");
-  };
-  const installApp = () => {
-    rememberReturnTo(window.location.pathname + window.location.search);
-    window.location.href = apiUrl("/v1/auth/github/install");
-  };
-
-  async function linkWallet(body: Parameters<typeof wallet.mutateAsync>[0]) {
-    const s = await wallet.mutateAsync(body);
-    setSession(s.accessToken, s.expiresIn);
-    toast({ title: "wallet linked", body: body.type === "near" ? body.accountId : "EVM signature verified", tone: "pass" });
-  }
-
-  const signEvm = async (connectorId: string) => {
-    setWalletBusy(connectorId);
-    try {
-      const { nonce } = await unwrap(api.GET("/v1/auth/nonce"));
-      if (USE_MOCKS && connectors.length === 0) throw new Error("No browser wallet detected");
-      const m = await import("@/lib/wallet/evm");
-      await linkWallet(await m.signSiwe(nonce, chainId, connectorId));
-    } catch (e) {
-      toast({ title: "Wallet signature failed", body: errorMessage(e), tone: "block" });
-    } finally {
-      setWalletBusy(null);
-    }
-  };
-  const signNear = async (id: "meteor-wallet" | "my-near-wallet") => {
-    setWalletBusy(id);
-    try {
-      const { nonce } = await unwrap(api.GET("/v1/auth/nonce"));
-      const m = await import("@/lib/wallet/near");
-      const r = await m.signNear(id, nonce);
-      if (r) await linkWallet(r);
-    } catch (e) {
-      toast({ title: "NEAR signature failed", body: errorMessage(e), tone: "block" });
-    } finally {
-      setWalletBusy(null);
-    }
-  };
-
+  const p = providers.data;
   const u = me.data;
   const ghDone = !!u?.githubLogin;
   const appDone = !!u?.githubAppInstalled;
   const walletDone = !!(u?.walletAddress || u?.nearAccount);
+
+  /** Signed in already: add GitHub to this account (linkToken), rather than creating a second one. */
+  const linkGithub = () => {
+    if (USE_MOCKS || !p) return;
+    window.location.href = githubStartUrl(p.github.startUrl, here(), { link: true });
+  };
+  /** Always through the backend's /install route, so the install is attached to this account. */
+  const installApp = () => {
+    if (USE_MOCKS || !p) return;
+    window.location.href = githubStartUrl(p.github.startUrl, here(), { install: true });
+  };
+
+  if (!signedIn) {
+    return (
+      <div className="rounded-panel border border-line-2 bg-surface p-5">
+        <p className="text-17 font-medium text-text">Sign in when you start</p>
+        <p className="mt-1 max-w-[34rem] text-13 text-text-2">GitHub, an EVM wallet or a NEAR wallet. You’ll be asked when you press Start analysis, and the form above is kept.</p>
+        <Button variant="secondary" className="mt-4" onClick={() => openSignIn({ returnTo: here() })}>
+          Sign in now
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-panel border border-line-2 bg-surface">
       <Row
         icon={<GitHubMark />}
         title="GitHub"
-        note="required"
+        note={ghDone ? "app not installed" : "optional"}
         done={ghDone && appDone}
-        doneText={u?.githubLogin ? `@${u.githubLogin}${appDone ? " · app installed" : ""}` : undefined}
-        help="The GitHub App reads the repo for analysis and opens the integration pull request. Nothing else."
+        doneText={u?.githubLogin ? `@${u.githubLogin} · app installed` : undefined}
+        help={
+          ghDone && !appDone
+            ? "Private repos and the integration pull request need the Kronos GitHub App on the repo. It reads the repo and opens one PR. Nothing else."
+            : "Needed for private repos and for opening the integration pull request."
+        }
       >
-        {!signedIn || !ghDone ? (
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={github} busy={dev.isPending}>
-              <GitHubMark />
-              Continue with GitHub
-            </Button>
-            {meta.data?.devLogin && !USE_MOCKS ? (
-              <Button variant="ghost" onClick={() => devLogin()}>
-                Dev login
-              </Button>
-            ) : null}
-          </div>
-        ) : !appDone ? (
-          <Button onClick={installApp}>
+        {p?.github.enabled && !ghDone ? (
+          <Button variant="secondary" onClick={linkGithub}>
             <GitHubMark />
-            Install the Kronos GitHub App on this repo
+            Link GitHub
+          </Button>
+        ) : p?.github.enabled && !appDone ? (
+          <Button variant="secondary" onClick={installApp}>
+            <GitHubMark />
+            Install the Kronos GitHub App
           </Button>
         ) : null}
       </Row>
       <Row
         icon={<Wallet />}
-        title="Prove you control the protocol"
-        note="recommended"
+        title="Wallet"
+        note="optional"
         done={walletDone}
-        doneText={u?.walletAddress ? short(u.walletAddress) : u?.nearAccount ?? undefined}
-        help="A signature only (SIWE or NEP-413). It never moves funds, and you can add it any time before going live."
-        dim={!signedIn}
+        doneText={[u?.walletAddress ? short(u.walletAddress) : null, u?.nearAccount ?? null].filter(Boolean).join(" · ") || undefined}
+        help="Proves your team controls the protocol. A signature only (SIWE or NEP-413): it never moves funds."
       >
         {!walletDone ? (
           <div className="flex flex-wrap gap-2">
-            {connectors.map((c) => (
-              <Button key={c.id} variant="secondary" disabled={!signedIn} busy={walletBusy === c.id} onClick={() => signEvm(c.id)}>
-                EVM · {c.name}
-              </Button>
-            ))}
-            <Button variant="secondary" disabled={!signedIn} busy={walletBusy === "meteor-wallet"} onClick={() => signNear("meteor-wallet")}>
-              NEAR · Meteor
-            </Button>
-            <Button variant="secondary" disabled={!signedIn} busy={walletBusy === "my-near-wallet"} onClick={() => signNear("my-near-wallet")}>
-              NEAR · MyNearWallet
-            </Button>
+            {p?.siwe.enabled
+              ? wallet.connectors.map((c) => (
+                  <Button key={c.id} variant="secondary" busy={wallet.busy === c.id} disabled={!!wallet.busy} onClick={() => wallet.evm(c.id, chainId)}>
+                    EVM · {c.name === "Injected" ? "Browser wallet" : c.name}
+                  </Button>
+                ))
+              : null}
+            {p?.near.enabled ? (
+              <>
+                <Button variant="secondary" busy={wallet.busy === "meteor-wallet"} disabled={!!wallet.busy} onClick={() => wallet.near("meteor-wallet")}>
+                  NEAR · Meteor
+                </Button>
+                <Button variant="secondary" busy={wallet.busy === "my-near-wallet"} disabled={!!wallet.busy} onClick={() => wallet.near("my-near-wallet")}>
+                  NEAR · MyNearWallet
+                </Button>
+              </>
+            ) : null}
           </div>
         ) : null}
       </Row>
-      {signedIn ? (
-        <div className="flex items-center justify-between border-t border-line bg-surface-2/50 px-5 py-2.5 text-13 text-text-3">
-          <span>Signed in{u?.githubLogin ? ` as @${u.githubLogin}` : ""}</span>
-          <button className="rounded-ctl px-1 text-text-2 underline decoration-line-2 underline-offset-4 transition-colors duration-k hover:text-text" onClick={() => void logout().then(() => qc.clear())}>
-            Sign out
-          </button>
-        </div>
-      ) : null}
+      <div className="flex items-center justify-between border-t border-line bg-surface-2/50 px-5 py-2.5 text-13 text-text-3">
+        <span className="truncate">Signed in{u?.githubLogin ? ` as @${u.githubLogin}` : u?.walletAddress ? ` as ${short(u.walletAddress)}` : u?.nearAccount ? ` as ${u.nearAccount}` : ""}</span>
+        <button
+          className="shrink-0 rounded-ctl px-1 text-text-2 underline decoration-line-2 underline-offset-4 transition-colors duration-k hover:text-text"
+          onClick={() =>
+            void logout().then(() => {
+              qc.clear();
+              router.push("/");
+            })
+          }
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }

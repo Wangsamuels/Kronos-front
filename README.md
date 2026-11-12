@@ -21,27 +21,49 @@ Leave `NEXT_PUBLIC_API_URL` empty.
 pnpm dev            # http://localhost:3000
 ```
 
-MSW intercepts every `/v1/*` call. The handlers are typed from the same `contracts/openapi.json`, and a scripted SSE run plays the full analysis. Mock state lives in `localStorage` (`kronos.mock.v3`); clear it to start over. A small "mock api" badge shows in the corner.
+MSW intercepts every `/v1/*` call. The handlers are typed from the same `contracts/openapi.json`, and a scripted SSE run plays the full analysis. Mock state lives in `localStorage` (`kronos.mock.v4`); clear it to start over. A small "mock api" badge shows in the corner.
 
 Try these:
 - **Connect → "or use the MiniLend sample"** (`sample://minilend`) → Continue with GitHub (mock) → Start analysis.
 - Put **"bridge"** (or any non-lending hint) in the repo: the run fails with `UNSUPPORTED_TYPE` and you get the waitlist (`POST /v1/waitlist`).
 - On **Verify**, a guard address ending in `dead` fails the checklist. Any other valid address goes LIVE.
-- `/p` already includes a seeded LIVE "MiniLend (sample)" protocol, so you can see the dashboard right away.
+- `/p` already includes a seeded LIVE "MiniLend (sample)" protocol on two chains. Sign in first (the modal's GitHub button signs in the demo user on mocks).
 
 ## Run live
 
+Production builds are live by default: `next.config.ts` defaults `NEXT_PUBLIC_API_URL` to `/api` when building for production, so `pnpm build` (and Vercel) talk to the real backend with no dashboard setup. An env var always wins. To build on mocks instead: `NEXT_PUBLIC_API_URL= pnpm build`.
+
 ```bash
-NEXT_PUBLIC_API_URL=https://<your-backend-host> pnpm dev
+NEXT_PUBLIC_API_URL=/api pnpm dev      # dev server against the live backend
 ```
 
-The backend has to allow this origin. Set `CORS_ORIGINS` to include it (credentials on), and set `FRONTEND_URL` to it, because the GitHub OAuth callback redirects to `FRONTEND_URL/auth/callback#access_token=…`. For SIWE in production, the signed domain is this frontend's host.
+**Everything goes through this site's own origin.** The browser calls `/api/v1/...`; `vercel.json` (on Vercel) and the `rewrites()` in `next.config.ts` (for `next dev` / `next start`) proxy that to the backend. That keeps the refresh cookie first-party, which Safari and Brave require. Two things do not use the proxy:
 
-To regenerate types from the running backend: `OPENAPI_SRC=<url-or-path-to-openapi.json> pnpm api:gen`.
+- **GitHub sign-in** is a full-page navigation to the backend (`providers.github.startUrl`), because GitHub's callback URL points there.
+- **The live log (SSE)** connects to `NEXT_PUBLIC_API_DIRECT_URL`, because a proxy can buffer or cut a long-lived stream. Leave it empty locally and the stream uses `/api` too.
+
+The backend must have `FRONTEND_URL` set to this site and the site's origin in `CORS_ORIGINS`. SIWE and NEAR messages are bound to the host in `GET /v1/auth/providers`, so wallet sign-in only works on that host (previews on other hosts need adding to `CORS_ORIGINS`).
+
+To regenerate types from the running backend: `OPENAPI_SRC=https://<backend>/openapi.json pnpm api:gen` (and copy the file to `contracts/openapi.json` so the mocks stay typed against it).
+
+## Sign-in
+
+One modal (`src/components/auth/AuthModal.tsx`) serves sign-up and sign-in. It is built from `GET /v1/auth/providers` and shows only enabled providers; the backend says which happened with `isNewUser`. Dev login never shows in a production build.
+
+| Trigger | Signed out | Signed in |
+|---|---|---|
+| Paste a repo, press Analyze | Form saved to `sessionStorage['kronos:pending-submit']`, modal opens | Submits straight away |
+| "Your protocols" | Modal opens, `returnTo=/p` | Goes to `/p` |
+| Any API call still 401 after one refresh | Modal opens, `returnTo` = current path | n/a |
+
+After any successful sign-in, a pending submit is posted to `/v1/protocols` and the new analysis opens.
+
+- **GitHub** returns to `/auth/callback#access_token=…&code=…&return_to=…`. The page clears the fragment and calls `POST /api/v1/auth/exchange {code}`, which sets the refresh cookie on this domain; if that fails it falls back to the fragment's access token.
+- **Linking** a second method to the same account: wallet calls carry the bearer token; GitHub and the App install add `linkToken=<accessToken>` to the start URL.
 
 ## Auth
 
-- The access JWT lives only in memory (`src/api/auth.ts`).
+- The access JWT lives only in memory (`src/api/auth.ts`). It is refreshed about a minute before it expires while the tab is visible.
 - Refresh uses the httpOnly cookie: `POST /v1/auth/refresh` with `credentials: 'include'`. Refreshes are deduplicated, and a 401 is retried once after a refresh.
 - EventSource can't set headers, so SSE gets `?token=<jwt>`.
 
@@ -85,7 +107,9 @@ Every data view has loading skeletons, an empty state, an error state with Retry
 
 | Var | Meaning |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | Backend base URL. Empty means MSW mocks |
+| `NEXT_PUBLIC_API_URL` | `/api` for the live backend through the proxy. Empty means MSW mocks |
+| `NEXT_PUBLIC_API_DIRECT_URL` | Backend origin for the live log (SSE). Empty means same as the API URL |
+| `KRONOS_API_ORIGIN` | Server-side: where `/api/*` is proxied. Defaults to the Heroku app |
 | `NEXT_PUBLIC_WALLETCONNECT_ID` | Optional. Injected wallets work without it |
 | `NEXT_PUBLIC_NEAR_NETWORK` | `testnet` |
 | `NEXT_PUBLIC_CHAINS` | `aurora-testnet,base-sepolia` |

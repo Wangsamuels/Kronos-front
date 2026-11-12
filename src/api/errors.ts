@@ -17,7 +17,7 @@ export function toApiError(status: number, body: unknown): ApiError {
 }
 
 export function errorMessage(err: unknown) {
-  if (err instanceof ApiError) return `${err.message} (${err.code})`;
+  if (err instanceof ApiError) return err.code.startsWith("HTTP_") ? `${err.message}` : `${err.message} (${err.code})`;
   if (err instanceof Error) return err.message;
   return "Something went wrong";
 }

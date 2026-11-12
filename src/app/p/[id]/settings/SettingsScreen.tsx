@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppBar } from "@/components/SiteNav";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Section";
@@ -11,13 +11,16 @@ import { useMe, usePatchSettings, useProtocol, useResults, useSettings } from "@
 import { errorMessage } from "@/api/errors";
 import type { Settings } from "@/api/types";
 import { short } from "@/lib/format";
+import { formatAmount, fromUnits, tokenInfo, toUnits } from "@/lib/tokens";
 import { cn } from "@/lib/cn";
 
 interface HistAsset {
   asset: string;
   symbol?: string;
   p999?: string;
+  p999DailyNetOutflow?: string;
   threshold?: string;
+  staleLimit?: string;
 }
 
 /** Outflow thresholds per asset (with historical percentile), alert channels, team. Light theme. */
@@ -33,35 +36,47 @@ export function SettingsScreen({ id }: { id: string }) {
     if (settings.data && !form) setForm(structuredClone(settings.data));
   }, [settings.data, form]);
 
-  const hist = (((results.data?.thresholds as { assets?: HistAsset[] } | null)?.assets ?? []) as HistAsset[]).reduce<Record<string, HistAsset>>((m, a) => ((m[a.asset.toLowerCase()] = a), m), {});
-  const dirty = form && settings.data && JSON.stringify(form) !== JSON.stringify(settings.data);
-  const loosened = form && settings.data ? Object.entries(form.thresholds ?? {}).filter(([k, v]) => Number(v.threshold) > Number(settings.data!.thresholds?.[k]?.threshold ?? Infinity)) : [];
+  const histList = (((results.data?.thresholds as { assets?: HistAsset[] } | null)?.assets ?? []) as HistAsset[]).filter((a) => /^0x[0-9a-fA-F]{40}$/.test(a.asset));
+  const hist = histList.reduce<Record<string, HistAsset>>((m, a) => ((m[a.asset.toLowerCase()] = a), m), {});
+  // Assets to show: everything saved, plus the ones the analysis calibrated (as starting targets).
+  const savedKeys = Object.keys(form?.thresholds ?? {});
+  const assets = [...savedKeys, ...histList.map((a) => a.asset).filter((a) => !savedKeys.some((k) => k.toLowerCase() === a.toLowerCase()))];
+  const valueOf = (asset: string) => form?.thresholds?.[asset] ?? { threshold: hist[asset.toLowerCase()]?.threshold ?? "0", staleLimit: hist[asset.toLowerCase()]?.staleLimit };
+
+  /** Only what changed is sent: every field of the PATCH body is optional. */
+  const changes = (): Partial<Settings> => {
+    if (!form || !settings.data) return {};
+    const out: Partial<Settings> = {};
+    const thr = Object.fromEntries(Object.entries(form.thresholds ?? {}).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(settings.data!.thresholds?.[k])));
+    if (Object.keys(thr).length) out.thresholds = thr;
+    const norm = (v?: string | null) => v || null;
+    const al = (["webhookUrl", "telegramChatId", "discordWebhookUrl"] as const).filter((k) => norm(form.alerts?.[k]) !== norm(settings.data!.alerts?.[k]));
+    if (al.length) out.alerts = Object.fromEntries(al.map((k) => [k, norm(form.alerts?.[k])])) as Settings["alerts"];
+    if (!!form.autoTighten !== !!settings.data.autoTighten) out.autoTighten = !!form.autoTighten;
+    return out;
+  };
+  const dirty = Object.keys(changes()).length > 0;
+  const loosened = form && settings.data ? Object.entries(form.thresholds ?? {}).filter(([k, v]) => cmp(v.threshold, settings.data!.thresholds?.[k]?.threshold) > 0) : [];
+  const [badAmounts, setBadAmounts] = useState<Record<string, boolean>>({});
 
   const urlErr = (v?: string | null) => (v && !/^https:\/\/\S+$/.test(v) ? "Must be an https:// URL" : null);
-  const errs = form ? [urlErr(form.alerts?.webhookUrl), urlErr(form.alerts?.discordWebhookUrl)].filter(Boolean) : [];
+  const errs = form ? [urlErr(form.alerts?.webhookUrl), urlErr(form.alerts?.discordWebhookUrl), ...Object.values(badAmounts).filter(Boolean).map(() => "amount")].filter(Boolean) : [];
 
   const save = async () => {
     if (!form || errs.length) return;
     try {
-      const saved = await patch.mutateAsync({
-        thresholds: form.thresholds,
-        alerts: {
-          webhookUrl: form.alerts?.webhookUrl || null,
-          telegramChatId: form.alerts?.telegramChatId || null,
-          discordWebhookUrl: form.alerts?.discordWebhookUrl || null,
-        },
-        autoTighten: form.autoTighten,
-      });
+      const saved = await patch.mutateAsync(changes() as Settings);
       setForm(structuredClone(saved));
-      toast({ title: "settings saved", tone: "pass", body: loosened.length ? "Raised thresholds take effect on-chain after the Tier 1 timelock (48h)." : undefined });
+      toast({ title: "Settings saved", tone: "pass", body: loosened.length ? "Raised thresholds are recorded as your target. On-chain they change through the Tier 1 timelock (48h)." : undefined });
     } catch (e) {
       toast({ title: "Not saved", body: errorMessage(e), tone: "block" });
     }
   };
 
   const setAlert = (k: keyof NonNullable<Settings["alerts"]>, v: string) => setForm((f) => (f ? { ...f, alerts: { ...f.alerts, [k]: v } } : f));
-  const setThr = (asset: string, k: "threshold" | "staleLimit", v: string) =>
-    setForm((f) => (f ? { ...f, thresholds: { ...f.thresholds, [asset]: { ...(f.thresholds?.[asset] ?? { threshold: "0" }), [k]: v.replace(/[^\d.]/g, "") } } } : f));
+  /** Values are kept exactly as the API wants them: strings in the token's smallest unit. */
+  const setThr = (asset: string, k: "threshold" | "staleLimit", raw: string) =>
+    setForm((f) => (f ? { ...f, thresholds: { ...f.thresholds, [asset]: { ...valueOf(asset), [k]: raw } } } : f));
 
   return (
     <div data-theme="light" className="min-h-dvh bg-bg text-text">
@@ -85,44 +100,59 @@ export function SettingsScreen({ id }: { id: string }) {
           </div>
         ) : (
           <div className="mt-10 grid gap-10">
-            <Group title="Outflow thresholds" body="Rolling 24h net outflow per asset. Above the threshold, withdrawals are queued instead of reverted. Lowering is instant; raising is a Tier 1 timelock action (48h). The monitor can only ever tighten on its own.">
+            <Group title="Outflow thresholds" body="Rolling 24h net outflow per asset. Above the threshold, withdrawals are queued instead of reverted. The monitor alerts against these values.">
               <Panel>
-                {Object.keys(form.thresholds ?? {}).length === 0 ? (
+                {assets.length === 0 ? (
                   <EmptyState title="No assets tracked yet">Thresholds appear after the first analysis calibrates them from history.</EmptyState>
                 ) : (
                   <ul className="divide-y divide-line">
-                    {Object.entries(form.thresholds ?? {}).map(([asset, t]) => {
+                    {assets.map((asset) => {
+                      const t = valueOf(asset);
                       const h = hist[asset.toLowerCase()];
-                      const was = Number(settings.data?.thresholds?.[asset]?.threshold ?? NaN);
-                      const now = Number(t.threshold);
-                      const dir = Number.isFinite(was) && now !== was ? (now > was ? "raise" : "lower") : null;
+                      const info = tokenInfo(asset);
+                      const symbol = info?.symbol ?? h?.symbol;
+                      const was = settings.data?.thresholds?.[asset]?.threshold;
+                      const dir = was !== undefined && cmp(t.threshold, was) !== 0 ? (cmp(t.threshold, was) > 0 ? "raise" : "lower") : null;
+                      const p999 = h?.p999DailyNetOutflow ?? h?.p999;
+                      const unit = info ? symbol : "base units";
                       return (
                         <li key={asset} className="grid gap-4 p-5">
                           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                             <p className="flex items-center gap-3">
                               <span aria-hidden className="grid size-9 place-items-center rounded-ctl border border-line-2 bg-surface-2 font-mono text-11 text-text-2">
-                                {(h?.symbol ?? "?").slice(0, 1)}
+                                {(symbol ?? "?").slice(0, 1)}
                               </span>
                               <span>
-                                <span className="block text-17 font-medium text-text">{h?.symbol ?? short(asset)}</span>
+                                <span className="block text-17 font-medium text-text">{symbol ?? short(asset)}</span>
                                 <span className="block font-mono text-11 text-text-3">{short(asset, 10, 6)}</span>
                               </span>
                             </p>
-                            {dir ? <span className={cn("k-tag", dir === "raise" ? "k-tag-queue" : "k-tag-pass")}>{dir === "raise" ? "raise · queued 48h" : "lower · instant"}</span> : null}
+                            {dir ? <span className={cn("k-tag", dir === "raise" ? "k-tag-queue" : "k-tag-pass")}>{dir === "raise" ? "raise · timelocked on-chain" : "lower"}</span> : null}
                           </div>
                           <div className="grid gap-4 min-[520px]:grid-cols-2">
-                            <Field label="Threshold" hint={h?.p999 ? `p99.9 of history: ${Number(h.p999).toLocaleString("en-US")}` : "No history yet"}>
-                              <input className="k-input k-tnum" inputMode="decimal" value={t.threshold} onChange={(e) => setThr(asset, "threshold", e.target.value)} />
-                            </Field>
-                            <Field label="Stale-attestation limit" hint="Applies while the attestation is stale.">
-                              <input className="k-input k-tnum" inputMode="decimal" value={t.staleLimit ?? ""} onChange={(e) => setThr(asset, "staleLimit", e.target.value)} />
-                            </Field>
+                            <AmountField
+                              label={`Threshold (${unit})`}
+                              raw={t.threshold}
+                              decimals={info?.decimals}
+                              hint={p999 ? `p99.9 of daily net outflow: ${formatAmount(p999, asset)}` : "No history yet"}
+                              onRaw={(v) => setThr(asset, "threshold", v)}
+                              onValid={(ok) => setBadAmounts((b) => ({ ...b, [`${asset}:t`]: !ok }))}
+                            />
+                            <AmountField
+                              label={`Stale-attestation limit (${unit})`}
+                              raw={t.staleLimit ?? ""}
+                              decimals={info?.decimals}
+                              hint="Applies while the attestation is stale."
+                              onRaw={(v) => setThr(asset, "staleLimit", v)}
+                              onValid={(ok) => setBadAmounts((b) => ({ ...b, [`${asset}:s`]: !ok }))}
+                            />
                           </div>
                         </li>
                       );
                     })}
                   </ul>
                 )}
+                <p className="border-t border-line px-5 py-3.5 text-13 text-text-3">Saved here as your target. Changing a threshold on-chain is a Tier 1 timelocked action; the monitor can only tighten on its own.</p>
               </Panel>
             </Group>
 
@@ -142,7 +172,7 @@ export function SettingsScreen({ id }: { id: string }) {
                 <label className="flex cursor-pointer items-start justify-between gap-6 border-t border-line p-5">
                   <span>
                     <span className="block text-15 font-medium text-text">Tighten automatically on anomalies</span>
-                    <span className="mt-1 block text-13 text-text-2">Lets the monitor pause or lower caps by itself. It can never loosen anything.</span>
+                    <span className="mt-1 block text-13 text-text-2">On: the monitor may pause or lower limits by itself. Off: it alerts, but never pauses or lowers anything. Either way it can never loosen.</span>
                   </span>
                   <span className="relative mt-0.5 inline-flex shrink-0">
                     <input type="checkbox" role="switch" className="peer sr-only" checked={!!form.autoTighten} onChange={(e) => setForm({ ...form, autoTighten: e.target.checked })} />
@@ -175,7 +205,7 @@ export function SettingsScreen({ id }: { id: string }) {
                 <p className="text-13" aria-live="polite">
                   {loosened.length ? (
                     <span className="text-queue">
-                      Raising {loosened.length} threshold{loosened.length === 1 ? "" : "s"}: queued 48h on-chain.
+                      Raising {loosened.length} threshold{loosened.length === 1 ? "" : "s"}: saved as a target, timelocked on-chain.
                     </span>
                   ) : errs.length ? (
                     <span className="text-block">Fix the highlighted fields.</span>
@@ -212,5 +242,58 @@ function Group({ title, body, children }: { title: string; body: string; childre
       </div>
       <div className="lg:col-span-2">{children}</div>
     </section>
+  );
+}
+
+/** Compare two smallest-unit amount strings without losing precision. */
+function cmp(a?: string | null, b?: string | null) {
+  try {
+    const x = BigInt(a || "0");
+    const y = BigInt(b || "0");
+    return x === y ? 0 : x > y ? 1 : -1;
+  } catch {
+    return Number(a) - Number(b);
+  }
+}
+
+/**
+ * Edits an amount in whole tokens and reports it in the token's smallest unit. When the token's
+ * decimals are not known, the raw value is edited as-is and the label says "base units".
+ */
+function AmountField({ label, raw, decimals, hint, onRaw, onValid }: { label: string; raw: string; decimals?: number; hint?: string; onRaw: (raw: string) => void; onValid: (ok: boolean) => void }) {
+  const show = (r: string) => (decimals === undefined ? r : fromUnits(r, decimals));
+  const [text, setText] = useState(() => show(raw));
+  const [bad, setBad] = useState(false);
+  const last = useRef(raw);
+  // The saved value changed underneath (save, discard): show it.
+  useEffect(() => {
+    if (raw !== last.current) {
+      last.current = raw;
+      setText(show(raw));
+      setBad(false);
+      onValid(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw]);
+  return (
+    <Field label={label} hint={hint} error={bad ? (decimals === undefined ? "Whole numbers only" : `A number with up to ${decimals} decimals`) : null}>
+      <input
+        className="k-input k-tnum"
+        inputMode="decimal"
+        value={text}
+        aria-invalid={bad}
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          const units = decimals === undefined ? (/^\d+$/.test(v.trim()) ? v.trim() : null) : toUnits(v, decimals);
+          setBad(units === null);
+          onValid(units !== null);
+          if (units !== null) {
+            last.current = units;
+            onRaw(units);
+          }
+        }}
+      />
+    </Field>
   );
 }
