@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Eyebrow, PageHead } from "@/components/ui/Page";
-import { GITHUB_URL } from "@/lib/links";
+import { FRONTEND_GITHUB_URL, GITHUB_URL } from "@/lib/links";
 
 export const metadata: Metadata = { title: "Docs" };
 export const dynamic = "force-static";
@@ -52,6 +52,16 @@ export default function Docs() {
                   <Link href={GITHUB_URL} className="k-link mt-4 inline-block font-mono text-13">
                     {GITHUB_URL.startsWith("http") ? GITHUB_URL : "GitHub link coming with the public repo"}
                   </Link>
+                ) : null}
+                {s.id === "contact" ? (
+                  <div className="mt-4 grid gap-2 font-mono text-13">
+                    <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="k-link inline-block w-fit">
+                      GitHub · {GITHUB_URL.replace("https://", "")}
+                    </a>
+                    <a href={FRONTEND_GITHUB_URL} target="_blank" rel="noreferrer" className="k-link inline-block w-fit">
+                      GitHub · {FRONTEND_GITHUB_URL.replace("https://", "")}
+                    </a>
+                  </div>
                 ) : null}
               </section>
             ))}

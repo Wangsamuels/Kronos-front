@@ -1,7 +1,8 @@
 /** Public links. Set NEXT_PUBLIC_GITHUB_URL / NEXT_PUBLIC_X_URL when the public repo and account exist. */
-export const GITHUB_URL = process.env.NEXT_PUBLIC_GITHUB_URL || "/docs#source";
+export const GITHUB_URL = process.env.NEXT_PUBLIC_GITHUB_URL || "https://github.com/Wangsamuels/Kronos-backend";
+export const FRONTEND_GITHUB_URL = "https://github.com/Wangsamuels/Kronos-front";
 export const X_URL = process.env.NEXT_PUBLIC_X_URL || "/docs#contact";
-export const ATTACK_TESTS_URL = process.env.NEXT_PUBLIC_GITHUB_URL ? `${process.env.NEXT_PUBLIC_GITHUB_URL}/tree/main/contracts/test` : "/docs#attack-library";
+export const ATTACK_TESTS_URL = `${GITHUB_URL}/tree/main/contracts/test`;
 
 // ---------- NEAR (testnet). Everything here is public chain data, linked as proof on the Why NEAR page.
 export const NEAR_EXPLORER = "https://testnet.nearblocks.io";

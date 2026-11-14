@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { ArrowRight, Check } from "@/components/ui/Icons";
 
@@ -12,12 +12,72 @@ const STAGES = [
 ];
 
 /** Users and admins enter through different doors and pass the same checks. */
+const STEP_MS = 4500;
+
 export function GuardFlow() {
-  const [active, setActive] = useState("post");
+  const [active, setActive] = useState(STAGES[0]!.key);
+  const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
   const ai = STAGES.findIndex((s) => s.key === active);
   const stage = STAGES[ai]!;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const on = () => setReduced(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+
+  // Only cycle while the section is on screen.
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setVisible(!!e?.isIntersecting), { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Advance to the next stage every STEP_MS; the bar shows how long is left.
+  const running = visible && !paused && !reduced;
+  useEffect(() => {
+    if (!running) return;
+    let raf = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = now - last;
+      last = now;
+      setProgress((p) => {
+        const next = p + dt / STEP_MS;
+        if (next >= 1) {
+          setActive((cur) => STAGES[(STAGES.findIndex((s) => s.key === cur) + 1) % STAGES.length]!.key);
+          return 0;
+        }
+        return next;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [running]);
+
+  const pick = (key: string) => {
+    if (key !== active) setProgress(0);
+    setActive(key);
+  };
+
   return (
-    <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
+    <div
+      ref={root}
+      className="grid gap-6 lg:grid-cols-12 lg:gap-10"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
       <div className="lg:col-span-7">
         {/* two doors */}
         <div className="grid grid-cols-2 gap-3">
@@ -45,9 +105,9 @@ export function GuardFlow() {
             return (
               <li key={s.key} className="border-b border-line last:border-b-0">
                 <button
-                  onMouseEnter={() => setActive(s.key)}
-                  onFocus={() => setActive(s.key)}
-                  onClick={() => setActive(s.key)}
+                  onMouseEnter={() => pick(s.key)}
+                  onFocus={() => pick(s.key)}
+                  onClick={() => pick(s.key)}
                   aria-pressed={on}
                   className={cn("relative flex min-h-14 w-full items-center justify-between gap-4 px-4 text-left transition-colors duration-k sm:px-5", on ? "bg-surface-2" : "bg-surface hover:bg-surface-2/60")}
                 >
@@ -60,6 +120,11 @@ export function GuardFlow() {
                     {s.checks.length} checks
                     <ArrowRight className={cn("size-3.5 transition-opacity duration-k", on ? "opacity-100" : "opacity-0")} />
                   </span>
+                  {on && !reduced ? (
+                    <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-line">
+                      <span className="block h-full bg-text" style={{ width: `${progress * 100}%` }} />
+                    </span>
+                  ) : null}
                 </button>
                 {/* On small screens the checks open in place, under the stage that owns them. */}
                 {on ? (
@@ -81,7 +146,10 @@ export function GuardFlow() {
             <span>
               Stage 0{ai + 1} · {stage.label}
             </span>
-            <span>{stage.checks.length} checks</span>
+            <span>{paused ? "paused" : `${stage.checks.length} checks`}</span>
+          </div>
+          <div aria-hidden className="h-0.5 bg-line">
+            <div className="h-full bg-pass" style={{ width: `${reduced ? 0 : progress * 100}%` }} />
           </div>
           <ul className="grid min-h-[236px] content-start gap-3.5 p-5">
             {stage.checks.map((c) => (

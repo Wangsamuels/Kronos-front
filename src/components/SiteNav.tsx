@@ -1,6 +1,8 @@
 "use client";
 import * as D from "@radix-ui/react-dialog";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { Wordmark } from "./Wordmark";
@@ -17,31 +19,103 @@ const LINKS = [
   { href: GITHUB_URL, label: "GitHub", external: GITHUB_URL.startsWith("http") },
 ];
 
+/** Home-page sections the nav tracks while scrolling. */
+const SECTIONS = LINKS.filter((l) => l.href.startsWith("/#")).map((l) => l.href.slice(2));
+
+/** Which nav link matches where the user is: the section in view on the home page, or the current route. */
+function useActiveHref() {
+  const pathname = usePathname();
+  const [section, setSection] = useState<string | null>(null);
+  useEffect(() => {
+    if (pathname !== "/") {
+      setSection(null);
+      return;
+    }
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const line = 96; // just under the sticky nav
+      let hit: string | null = null;
+      for (const id of SECTIONS) {
+        const r = document.getElementById(id)?.getBoundingClientRect();
+        if (r && r.top <= line && r.bottom > line) hit = id;
+      }
+      setSection(hit);
+    };
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on);
+      window.removeEventListener("resize", on);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [pathname]);
+  if (pathname === "/") return section ? `/#${section}` : null;
+  return LINKS.find((l) => !l.external && !l.href.startsWith("/#") && (pathname === l.href || pathname.startsWith(`${l.href}/`)))?.href ?? null;
+}
+
 export function SiteNav() {
   const [scrolled, setScrolled] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const activeHref = useActiveHref();
   useEffect(() => {
-    const on = () => setScrolled(window.scrollY > 4);
+    const on = () => {
+      setScrolled(window.scrollY > 4);
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setProgress(max > 0 ? Math.min(1, window.scrollY / max) : 0);
+    };
     on();
     window.addEventListener("scroll", on, { passive: true });
-    return () => window.removeEventListener("scroll", on);
+    window.addEventListener("resize", on);
+    return () => {
+      window.removeEventListener("scroll", on);
+      window.removeEventListener("resize", on);
+    };
   }, []);
   return (
     <header className={cn("sticky top-0 z-30 border-b bg-bg/85 backdrop-blur-md transition-colors duration-k", scrolled ? "border-line" : "border-transparent")}>
       <nav aria-label="Main" className="mx-auto flex h-16 w-full max-w-grid items-center gap-10 px-5 md:px-10 lg:px-14">
         <Wordmark />
         <ul className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((l) => (
-            <li key={l.href}>
-              <Link
-                href={l.href}
-                className="inline-flex h-9 items-center gap-1 rounded-ctl px-3 text-13 text-text-2 transition-colors duration-k hover:bg-surface-2 hover:text-text"
-                {...(l.external ? { target: "_blank", rel: "noreferrer" } : {})}
-              >
-                {l.label}
-                {l.external ? <ArrowUpRight className="size-3 text-text-3" /> : null}
-              </Link>
-            </li>
-          ))}
+          {LINKS.map((l) => {
+            const on = activeHref === l.href;
+            return (
+              <li key={l.href} className="relative">
+                {on ? (
+                  <motion.span
+                    layoutId="nav-active"
+                    aria-hidden
+                    className="absolute inset-0 rounded-ctl bg-surface-2"
+                    transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                  />
+                ) : null}
+                <Link
+                  href={l.href}
+                  aria-current={on ? "location" : undefined}
+                  className={cn(
+                    "relative inline-flex h-9 items-center gap-1 rounded-ctl px-3 text-13 transition-colors duration-k hover:text-text",
+                    on ? "text-text" : "text-text-2 hover:bg-surface-2",
+                  )}
+                  {...(l.external ? { target: "_blank", rel: "noreferrer" } : {})}
+                >
+                  {l.label}
+                  {l.external ? <ArrowUpRight className="size-3 text-text-3" /> : null}
+                </Link>
+                {on ? (
+                  <motion.span
+                    layoutId="nav-underline"
+                    aria-hidden
+                    className="absolute inset-x-3 -bottom-[13px] h-px bg-text"
+                    transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
         <div className="ml-auto hidden items-center gap-2 md:flex">
           <AuthLink href="/p" className="hidden h-9 items-center rounded-ctl px-3 text-13 text-text-2 transition-colors duration-k hover:bg-surface-2 hover:text-text lg:inline-flex">
@@ -100,6 +174,9 @@ export function SiteNav() {
           </D.Portal>
         </D.Root>
       </nav>
+      <div aria-hidden className="absolute inset-x-0 bottom-0 h-px">
+        <div className="h-full bg-text/60" style={{ width: `${progress * 100}%` }} />
+      </div>
     </header>
   );
 }
